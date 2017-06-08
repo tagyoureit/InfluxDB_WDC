@@ -3,6 +3,8 @@ A Tableau Web Data Connector (WDC) to pull data from [InfluxDB](https://github.c
 
 Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.com/tagyoureit/InfluxDB_WDC)
 
+![Tableau WDC](images/InfluxDB_WDC.jpg)
+
 ## Instructions
 
 ### Local install
