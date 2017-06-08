@@ -8,7 +8,7 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ### Local install
 * npm install influxdb_wdc
   OR
-* Download the InfluxDB* files and put them in a web server directory.  (The only dependency is ['bootstrap-show-password.js'](https://raw.githubusercontent.com/wenzhixin/bootstrap-show-password/master/bootstrap-show-password.js) and if you don't install it the only part that won't work is the show/hide password button.)
+* Download the files and put them in a local web server.
 
 * Open in Tableau 10.2+ and point to your URL.
 
