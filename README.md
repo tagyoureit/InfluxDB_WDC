@@ -12,7 +12,7 @@ A Tableau Web Data Connector (WDC) to pull data from [InfluxDB](https://github.c
 
 ### Use it in place
 
-This is hosted by Github Pages.  To use it, open Tableau (10.2+), select "Web Data Connector" and point to this URL: https://tagyoureit.github.io/InfluxDB_WDC/InfluxDB.html?auth=true
+This is hosted by Github Pages.  To use it, open Tableau (10.2+), select "Web Data Connector" and point to this URL: [https://tagyoureit.github.io/InfluxDB_WDC/InfluxDB.html](https://tagyoureit.github.io/InfluxDB_WDC/InfluxDB.html)
 
 #### Authorization
 If you use authorization on your InfluxDB, you can click the link to reload the page with the username/password fields. Alternatively, add `?auth=true` or `?auth=false` to the end of the URL to access these directly.
