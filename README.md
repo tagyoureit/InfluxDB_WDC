@@ -17,6 +17,12 @@ This is hosted by Github Pages.  To use it, open Tableau (10.2+), select "Web Da
 #### Authorization
 If you use authorization on your InfluxDB, you can click the link to reload the page with the username/password fields. Alternatively, add `?auth=true` or `?auth=false` to the end of the URL to access these directly.
 
+## Features
+
+* Basic Auth or no Auth
+* Full or Incremental refresh
+* Row count for extract creation progress
+
 
 ## Suggestions on use
 ### Tableau and Time Series
@@ -28,6 +34,9 @@ Aggregation is a great way to be able to do a row-level join on time series data
 Aggregation can significantly decrease (or increase) the number of data points that are returned.  If your DB stores 1000 measurements per second, and aggregate up to the minute you'll reduce the data by 59,999 points per minute.  On the other hand, if you store 1 measurement per hour and aggregate by the milli-second you'll pull an extra 59,999 data points per minute.
 
 If you don't aggregate the measurements, then you will likely want to create a separate Tableau Data Source for each measurement.  
+
+#### Do you need MAX in Tableau?
+By default, Tableau will try to SUM all of your measurements.  If you bring data back and try to display it in Tableau at a higher level aggregation (eg you collect temperature readings every 20 minutes) and graph this at an hourly measurement, you may see you steady 80 degrees appear as 240 degrees!  
 
 ## Limitations
 
