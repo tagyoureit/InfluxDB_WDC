@@ -78,9 +78,17 @@
         } else {
           id_str = field[0];
         }
+        // force the correct mapping of data types
+        var tabDataType;
+        switch (field[1]){
+           case 'float': tabDataType = tableau.dataTypeEnum.float; break;
+           case 'integer': tabDataType = tableau.dataTypeEnum.int; break;
+           case 'string': tabDataType = tableau.dataTypeEnum.string; break;
+           case 'boolean': tabDataType = tableau.dataTypeEnum.bool; break;
+         }
         schema[index].columns.push({
           id: id_str,
-          dataType: field[1]
+          dataType: tabDataType
         });
       });
       return $.when.apply($, deferreds)
