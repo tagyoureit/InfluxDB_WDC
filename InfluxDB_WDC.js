@@ -42,6 +42,9 @@
     if (debug) console.log('Retrieving tagis with query: %s', queryString_tags);
     // Create a JQuery Promise object
     var deferred = $.Deferred();
+    $.ajaxSetup({
+      crossOrigin: true
+    });
     $.getJSON(queryString_tags, function(tags) {
       if (debug) console.log('tag query string for ' + index + ": " + JSON.stringify(tags));
 
@@ -69,6 +72,9 @@
   function queryStringFields(index, queryString_fields) {
     var deferred = $.Deferred();
     if (debug) console.log('Retrieving fields with query: %s', queryString_fields);
+    $.ajaxSetup({
+      crossOrigin: true
+    });
     $.getJSON(queryString_fields, function(fields) {
       var deferreds = (fields.results[0].series[0].values).map(function(field, field_index) {
         if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
@@ -80,12 +86,20 @@
         }
         // force the correct mapping of data types
         var tabDataType;
-        switch (field[1]){
-           case 'float': tabDataType = tableau.dataTypeEnum.float; break;
-           case 'integer': tabDataType = tableau.dataTypeEnum.int; break;
-           case 'string': tabDataType = tableau.dataTypeEnum.string; break;
-           case 'boolean': tabDataType = tableau.dataTypeEnum.bool; break;
-         }
+        switch (field[1]) {
+          case 'float':
+            tabDataType = tableau.dataTypeEnum.float;
+            break;
+          case 'integer':
+            tabDataType = tableau.dataTypeEnum.int;
+            break;
+          case 'string':
+            tabDataType = tableau.dataTypeEnum.string;
+            break;
+          case 'boolean':
+            tabDataType = tableau.dataTypeEnum.bool;
+            break;
+        }
         schema[index].columns.push({
           id: id_str,
           dataType: tabDataType
@@ -115,6 +129,11 @@
 
   function getMeasurements(db, queryString) {
     // Get all measurements (aka Tables) from the DB
+
+    $.ajaxSetup({
+      crossOrigin: true
+    });
+
     $.getJSON(queryString, function(resp) {
       if (debug) console.log('retrieved all measurements: %o', resp);
       if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
@@ -177,28 +196,25 @@
   function getDBs() {
 
     $('.dropdown-menu li a').click(function() {
-  var _which =  $(this).closest("ul").attr('id'); // get the ID of the UL element
+      var _which = $(this).closest("ul").attr('id'); // get the ID of the UL element
       if (debug) console.log(_which + " changed to: " + $(this).text());
       $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
       $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
 
-      if (_which==="protocol_selector"){
+      if (_which === "protocol_selector") {
         protocol = $(this).text();
-      }
-      else if (_which==="aggregation_selector"){
+      } else if (_which === "aggregation_selector") {
         aggregation = $(this).text();
-      }
-      else if (_which==="interval_measure"){
+      } else if (_which === "interval_measure") {
         interval_measure = $(this).data('prefix');
       }
 
     });
 
-    $('#interval_time').change(function(){
-      if ($(this).val()===""){
+    $('#interval_time').change(function() {
+      if ($(this).val() === "") {
         interval_time = $(this).prop('placeholder');
-      }
-      else {
+      } else {
         interval_time = $(this).val();
       }
     });
@@ -233,7 +249,9 @@
       }
 
       if (debug) console.log("Retrieving databases with querystring: ", queryString_DBs);
-
+      $.ajaxSetup({
+        crossOrigin: true
+      });
       $.getJSON(queryString_DBs, function(resp) {
           if (debug) console.log(resp.results[0].series[0].values);
 
@@ -251,7 +269,7 @@
         })
         .fail(function(err) {
           console.log(err);
-          $('#influx_alert').html("<div class='alert alert-error'><strong>Error loading database</strong>"+JSON.stringify(err)+"</div>");
+          $('#influx_alert').html("<div class='alert alert-error'><strong>Error loading database</strong>" + JSON.stringify(err) + "</div>");
           $('#influx_alert').fadeIn();
         });
     });
@@ -335,10 +353,10 @@
     if (json.useAggregation) {
       if (lastId !== -1) {
         // incremental refresh with aggregation
-        queryString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time+json.interval_measure + ")";
+        queryString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
       } else {
         // full refresh with aggregation
-        queryString += "+where+time+<+now()+group+by+*,time(" + json.interval_time+json.interval_measure + ")";
+        queryString += "+where+time+<+now()+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
       }
     } else {
       if (lastId !== -1) {
@@ -349,10 +367,13 @@
       }
     }
     queryString += "&db=" + json.db; // + "&chunked=true&chunk_size=20000";
-    if (json.useAuth){
+    if (json.useAuth) {
       queryString += "&u=" + tableau.username + "&p=" + tableau.password;
     }
     if (debug) console.log("Fetch data query string: ", queryString);
+    $.ajaxSetup({
+      crossOrigin: true
+    });
     $.getJSON(queryString, function(resp) {
         var values, columns, tags, val, val_len, col, col_len, series, series_cnt, row;
 
@@ -372,7 +393,7 @@
             }
 
             //Iterate over the result set
-            for ( val = 0, val_len = values.length; val < val_len; val++) {
+            for (val = 0, val_len = values.length; val < val_len; val++) {
               row = {};
               for (col = 0, col_len = columns.length; col < col_len; col++) {
                 row[columns[col]] = values[val][col];
@@ -395,13 +416,13 @@
             }
 
             //Iterate over the result set
-            for ( series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
+            for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
 
 
               values = series[series_cnt].values;
-              for ( val = 0, val_len = values.length; val < val_len; val++) {
+              for (val = 0, val_len = values.length; val < val_len; val++) {
                 columns = series[series_cnt].columns;
-                 row = {};
+                row = {};
 
                 // add tags from each series
                 var obj = series[series_cnt].tags;
@@ -411,8 +432,6 @@
                   }
                 }
                 for (col = 0, col_len = columns.length; col < col_len; col++) {
-
-
 
                   // console.log("val=%s  col=%s", val, col)
                   // console.log("row[series[series_cnt].columns[col]]:", series[series_cnt].columns[col])
@@ -428,10 +447,7 @@
               }
             }
 
-
-
-
-        }
+          }
 
         } else {
           if (debug) console.log('No additional data in table ' + table.tableInfo.id + ' or in incremental refresh after ', table.incrementValue);
@@ -506,7 +522,7 @@
 
     $('#useAggregationCheckBox').click(function() {
 
-      if ($(this).prop("checked") === false){
+      if ($(this).prop("checked") === false) {
         $('#aggregationGroup').addClass('hidden');
         useAggregation = false;
       } else {
