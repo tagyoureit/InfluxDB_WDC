@@ -42,9 +42,6 @@
     if (debug) console.log('Retrieving tagis with query: %s', queryString_tags);
     // Create a JQuery Promise object
     var deferred = $.Deferred();
-    $.ajaxSetup({
-      crossOrigin: true
-    });
     $.getJSON(queryString_tags, function(tags) {
       if (debug) console.log('tag query string for ' + index + ": " + JSON.stringify(tags));
 
@@ -72,9 +69,6 @@
   function queryStringFields(index, queryString_fields) {
     var deferred = $.Deferred();
     if (debug) console.log('Retrieving fields with query: %s', queryString_fields);
-    $.ajaxSetup({
-      crossOrigin: true
-    });
     $.getJSON(queryString_fields, function(fields) {
       var deferreds = (fields.results[0].series[0].values).map(function(field, field_index) {
         if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
@@ -129,11 +123,6 @@
 
   function getMeasurements(db, queryString) {
     // Get all measurements (aka Tables) from the DB
-
-    $.ajaxSetup({
-      crossOrigin: true
-    });
-
     $.getJSON(queryString, function(resp) {
       if (debug) console.log('retrieved all measurements: %o', resp);
       if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
@@ -249,9 +238,6 @@
       }
 
       if (debug) console.log("Retrieving databases with querystring: ", queryString_DBs);
-      $.ajaxSetup({
-        crossOrigin: true
-      });
       $.getJSON(queryString_DBs, function(resp) {
           if (debug) console.log(resp.results[0].series[0].values);
 
@@ -342,126 +328,180 @@
 
     var tableData = [];
     var json = JSON.parse(tableau.connectionData);
-    var queryString = json.protocol + json.server + ":" + json.port + "/query?q=select+";
+    var queryString = json.protocol + json.server + ":" + json.port + "/query";
+    var dataString = "q=select+";
 
     if (json.useAggregation) {
-      queryString += json.aggregation + "(*)";
+      dataString += json.aggregation + "(*)";
     } else {
-      queryString += '*';
+      dataString += '*';
     }
-    queryString += "+from+" + table.tableInfo.id;
+    dataString += "+from+" + table.tableInfo.id;
     if (json.useAggregation) {
       if (lastId !== -1) {
         // incremental refresh with aggregation
-        queryString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
+        dataString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
       } else {
         // full refresh with aggregation
-        queryString += "+where+time+<+now()+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
+        dataString += "+where+time+<+now()+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
       }
     } else {
       if (lastId !== -1) {
         // incremental refresh with NO aggregation
-        queryString += "+where+time+%3E+'" + lastId + "'";
+        dataString += "+where+time+%3E+'" + lastId + "'";
       } else {
         // full refresh with NO aggregation
       }
     }
-    queryString += "&db=" + json.db; // + "&chunked=true&chunk_size=20000";
+    //dataString += "+limit+6"  // add this to limit the number of results coming back.  Good for testing.
+    dataString += "&db=" + json.db;
+    dataString += "&chunked=true"; // add this to force chunking
+    //dataString += "&chunk_size=20000"   // add this to force a certain data set size
+    //dataString += "&chunked=false"
     if (json.useAuth) {
-      queryString += "&u=" + tableau.username + "&p=" + tableau.password;
+      dataString += "&u=" + tableau.username + "&p=" + tableau.password;
     }
-    if (debug) console.log("Fetch data query string: ", queryString);
-    $.ajaxSetup({
-      crossOrigin: true
-    });
-    $.getJSON(queryString, function(resp) {
-        var values, columns, tags, val, val_len, col, col_len, series, series_cnt, row;
+    if (debug) console.log("Fetch data query string: ", queryString + "?" + dataString);
+    var jqxhr = $.ajax({
+        dataType: "text",
+        url: queryString,
+        data: dataString,
+        success: function(resp) {
 
-        // Need this line for incremental refresh.  If there are no additional results than this set will be undefined.
-        if ((resp.results[0]).hasOwnProperty('series') === true) {
+          // NOTE: This response needs to be of dataType:"text" as of v1.2.4.
+          // See https://github.com/influxdata/influxdb/issues/8508
 
-          if (!json.useAggregation) {
+          var resultsArray = [];
+          // if the response includes \n that means it has multiple result sets and we need to parse through them
+          if (resp.includes('\n')) {
+            resultsArray = resp.split('\n');
+            // there is an extra \n at the end of the string, so remove the last element of the array
+            resultsArray.splice(resultsArray.length - 1, 1);
+            if (debug) console.log('Multiple result arrays (%s) found for %s', resultsArray.length, table.tableInfo.id);
 
-            values = resp.results[0].series[0].values;
-            columns = resp.results[0].series[0].columns;
-
-            if (debug) {
-              console.log("columns:", columns);
-              console.log("first row of values: ", values[0]);
-              console.log("Total # of rows for " + table.tableInfo.id + " is: " + values.length);
-              console.log("Using Aggregation: " + json.useAggregation);
+            // for each result set, parse it into a JSON object
+            for (var jp = 0; jp < resultsArray.length; jp++) {
+              resultsArray[jp] = JSON.parse(resultsArray[jp]);
             }
-
-            //Iterate over the result set
-            for (val = 0, val_len = values.length; val < val_len; val++) {
-              row = {};
-              for (col = 0, col_len = columns.length; col < col_len; col++) {
-                row[columns[col]] = values[val][col];
-              }
-              tableData.push(row);
-              if (val % 20000 === 0) {
-                console.log("Getting data: " + val + " rows.");
-                tableau.reportProgress("Getting data: " + val + " rows.");
-              }
-            }
+            resp = resultsArray;
           } else {
-
-            series = resp.results[0].series;
-
-            if (debug) {
-              console.log("first row of tags:", series[0].tags);
-              console.log("first row of columns:", series[0].columns);
-              console.log("first row of values: ", series[0].values);
-              console.log("Total # of series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", series.length, series[0].columns.length, series[0].values.length, series.length * series[0].columns.length * series[0].values.length, table.tableInfo.id);
-            }
-
-            //Iterate over the result set
-            for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
-
-
-              values = series[series_cnt].values;
-              for (val = 0, val_len = values.length; val < val_len; val++) {
-                columns = series[series_cnt].columns;
-                row = {};
-
-                // add tags from each series
-                var obj = series[series_cnt].tags;
-                for (var key in obj) {
-                  if (obj.hasOwnProperty(key)) {
-                    row[key] = obj[key];
-                  }
-                }
-                for (col = 0, col_len = columns.length; col < col_len; col++) {
-
-                  // console.log("val=%s  col=%s", val, col)
-                  // console.log("row[series[series_cnt].columns[col]]:", series[series_cnt].columns[col])
-                  // console.log("series[series_cnt].values[val][col]", series[series_cnt].values[val][col])
-                  row[series[series_cnt].columns[col]] = series[series_cnt].values[val][col];
-                }
-
-                tableData.push(row);
-                if (val % 20000 === 0) {
-                  console.log("Getting data: " + val + " rows.");
-                  tableau.reportProgress("Getting data: " + val + " rows.");
-                }
-              }
-            }
-
+            if (debug) console.log('Single result array returned for table %s', tableau.tableInfo.id);
+            // put it into an array so we only need one set of code to traverse the objects.
+            resultsArray = [JSON.parse(resp)];
+            resp = resultsArray;
           }
 
-        } else {
-          if (debug) console.log('No additional data in table ' + table.tableInfo.id + ' or in incremental refresh after ', table.incrementValue);
+          //console.log("number of rows: ", resp.results[0].series[0].values.length)
+          var values, columns, tags, val, val_len, col, col_len, response_array, series, series_cnt, row, total_rows;
+
+          // Need this line for incremental refresh.  If there are no additional results than this set will be undefined.
+          if ((resp[0].results[0]).hasOwnProperty('series') === true) {
+
+            if (!json.useAggregation) {
+              values = resp[0].results[0].series[0].values;
+              columns = resp[0].results[0].series[0].columns;
+
+              if (debug) {
+                console.log("columns:", columns);
+                console.log("first row of values: ", values[0]);
+                console.log("Total # of rows for " + table.tableInfo.id + " is: " + values.length);
+                console.log("Using Aggregation: " + json.useAggregation);
+              }
+
+              total_rows = 0;
+              for (response_array = 0; response_array < resp.length; response_array++) {
+                values = resp[response_array].results[0].series[0].values;
+                columns = resp[response_array].results[0].series[0].columns;
+                //Iterate over the result set
+
+                for (val = 0, val_len = values.length; val < val_len; val++) {
+                  row = {};
+                  for (col = 0, col_len = columns.length; col < col_len; col++) {
+                    row[columns[col]] = values[val][col];
+                  }
+                  tableData.push(row);
+
+                  if (total_rows % 20000 === 0 && total_rows !== 0) {
+                    console.log("Getting data: " + total_rows + " rows");
+                    tableau.reportProgress("Getting data: " + total_rows + " rows");
+                  } else if (total_rows === 0) {
+                    console.log("Getting data: 0 rows - Starting Extract");
+                    tableau.reportProgress("Getting data: 0 rows - Starting Extract");
+                  }
+                  total_rows++;
+                }
+              }
+            } else {
+
+              series = resp[0].results[0].series;
+
+              if (debug) {
+                console.log("first row of tags:", series[0].tags);
+                console.log("first row of columns:", series[0].columns);
+                console.log("first row of values: ", series[0].values);
+                console.log("Total # of result sets (%s) series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", resp.length, series.length, series[0].columns.length, series[0].values.length, resp.length * series.length * series[0].columns.length * series[0].values.length, table.tableInfo.id);
+              }
+
+              total_rows = 0;
+              for (response_array = 0; response_array < resp.length; response_array++) {
+                values = resp[response_array].results[0].series[0].values;
+                columns = resp[response_array].results[0].series[0].columns;
+
+                //Iterate over the result set
+                for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
+
+
+                  values = series[series_cnt].values;
+                  for (val = 0, val_len = values.length; val < val_len; val++) {
+                    columns = series[series_cnt].columns;
+                    row = {};
+
+                    // add tags from each series
+                    var obj = series[series_cnt].tags;
+                    for (var key in obj) {
+                      if (obj.hasOwnProperty(key)) {
+                        row[key] = obj[key];
+                      }
+                    }
+                    for (col = 0, col_len = columns.length; col < col_len; col++) {
+
+                      // console.log("val=%s  col=%s", val, col)
+                      // console.log("row[series[series_cnt].columns[col]]:", series[series_cnt].columns[col])
+                      // console.log("series[series_cnt].values[val][col]", series[series_cnt].values[val][col])
+                      row[series[series_cnt].columns[col]] = series[series_cnt].values[val][col];
+                    }
+
+                    tableData.push(row);
+
+                    if (total_rows % 20000 === 0 && total_rows !== 0) {
+                      console.log("Getting data: " + total_rows + " rows");
+                      tableau.reportProgress("Getting data: " + total_rows + " rows");
+                    } else if (total_rows === 0) {
+                      console.log("Getting data: 0 rows - Starting Extract");
+                      tableau.reportProgress("Getting data: 0 rows - Starting Extract");
+                    }
+                    total_rows++;
+                  }
+                }
+
+              }
+            }
+
+          } else {
+            if (debug) console.log('No additional data in table ' + table.tableInfo.id + ' or in incremental refresh after ', table.incrementValue);
+          }
+
+
         }
-
-
-      }).done(function() {
+      })
+      .done(function() {
         console.log("Finished getting table data for " + table.tableInfo.id);
         table.appendRows(tableData);
         doneCallback();
       })
-      .fail(function(err) {
-        tableau.abortWithError(JSON.stringify(err));
-        console.log(err);
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        tableau.abortWithError(errorThrown);
+        console.log(errorThrown);
         doneCallback();
       });
   };
