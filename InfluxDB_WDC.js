@@ -486,7 +486,8 @@
 
                     if (total_rows % 20000 === 0 && total_rows !== 0) {
                       console.log("Getting data: " + total_rows + " rows");
-                      tableau.reportProgress("Getting data: " + total_rows + " rows");
+                      tableau.reportProgress("Getting data: " + total_rows.toLocaleString() + " rows");
+
                     } else if (total_rows === 0) {
                       console.log("Getting data: 0 rows - Starting Extract");
                       tableau.reportProgress("Getting data: 0 rows - Starting Extract");
