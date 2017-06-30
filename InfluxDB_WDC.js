@@ -16,6 +16,7 @@
   var useAggregation = true; // use aggregation in the queries?
   var interval_time = '30'; // value for the group by time
   var interval_measure = 'm'; // h=hour, m=min, etc
+  var interval_measure_string = 'minutes'; // full string for interval
   var aggregation = 'mean'; // value for aggregating database value
 
   // From https://stackoverflow.com/questions/4656843/jquery-get-querystring-from-url
@@ -196,6 +197,7 @@
         aggregation = $(this).text();
       } else if (_which === "interval_measure") {
         interval_measure = $(this).data('prefix');
+        interval_measure_string = $(this).text();
       }
 
     });
@@ -238,25 +240,28 @@
       }
 
       if (debug) console.log("Retrieving databases with querystring: ", queryString_DBs);
-      $.getJSON(queryString_DBs, function(resp) {
-          if (debug) console.log(resp.results[0].series[0].values);
+      $.ajax({
+          url: queryString_DBs,
+          dataType: "json",
+          timeout: 3000,
+          success: function(resp) {
+            if (debug) console.log(resp.results[0].series[0].values);
 
-          $('.selectpicker').html('');
-          $.each(resp.results[0].series[0].values, function(index, value) {
-            $('<option>' + value + '</option>').appendTo('.selectpicker');
-          });
-          $('.selectpicker').selectpicker('refresh');
+            $('.selectpicker').html('');
+            $.each(resp.results[0].series[0].values, function(index, value) {
+              $('<option>' + value + '</option>').appendTo('.selectpicker');
+            });
+            $('.selectpicker').selectpicker('refresh');
 
-          // Once we have the databases, enable the 'load schema' button
-          $('#getSchemaButton').prop('disabled', false);
+            // Once we have the databases, enable the 'load schema' button
+            $('#getSchemaButton').prop('disabled', false);
+          }
         })
         .done(function() {
-          //alert("done")
+          // alert("done")
         })
         .fail(function(err) {
-          console.log(err);
-          $('#influx_alert').html("<div class='alert alert-error'><strong>Error loading database</strong>" + JSON.stringify(err) + "</div>");
-          $('#influx_alert').fadeIn();
+          influx_alert("Error loading database",JSON.stringify(err));
         });
     });
 
@@ -277,6 +282,11 @@
     });
   }
 
+  function influx_alert(errorType, err){
+    console.log(err);
+    $('#influx_alert').html('<a class="close" onclick="$(\'.alert\').hide()">×</a><div class=\'alert alert-error\'><strong>' + errorType  + ': </strong>' + err + "</div>");
+    $('#influx_alert').fadeIn();
+  }
 
   function tableauSubmit() {
     tableau.connectionName = "InfluxDB";
@@ -286,6 +296,7 @@
       aggregation: aggregation,
       interval_time: interval_time,
       interval_measure: interval_measure,
+      interval_measure_string: interval_measure_string,
       protocol: protocol,
       port: port,
       useAuth: useAuth,
@@ -423,7 +434,7 @@
 
                   if (total_rows % 20000 === 0 && total_rows !== 0) {
                     console.log("Getting data: " + total_rows + " rows");
-                    tableau.reportProgress("Getting data: " + total_rows + " rows");
+                    tableau.reportProgress("Getting data: " + total_rows.toLocaleString() + " rows");
                   } else if (total_rows === 0) {
                     console.log("Getting data: 0 rows - Starting Extract");
                     tableau.reportProgress("Getting data: 0 rows - Starting Extract");
@@ -511,6 +522,7 @@
   $(document).ready(function() {
     var urlVars = getUrlVars();
     console.log("currentURL: " + window.location.href + "  urlVars[auth]: " + urlVars.auth);
+
     if (urlVars.auth === 'true' || urlVars.auth === true) {
       useAuth = true;
     } else {
@@ -519,12 +531,12 @@
 
     if (useAuth === true) {
       $('#authGroup').removeClass('hidden');
-      $('#useAuthCheckBox').attr("checked", "checked");
+      // $('#useAuthCheckBox').attr("checked", "checked");
       $('#reloadWithAuth').attr("hidden", "hidden");
 
     } else {
       $('#authGroup').addClass('hidden');
-      $('#useAuthCheckBox').attr("checked");
+      // $('#useAuthCheckBox').attr("checked");
       $('#reloadWithoutAuth').attr("hidden", "hidden");
     }
 
@@ -571,10 +583,232 @@
       }
     });
 
-
-
     getDBs();
     tableau.registerConnector(myConnector);
+
+    // fill in previous values, if present
+
+    // following are for testing; uncomment to see behavior in Simulator
+    /* tableau.username = 'my_user'
+    tableau.connectionData = {
+      "db": "pool",
+      "server": "11.11.11.170",
+      "aggregation": "count",
+      "interval_time": "110",
+      "interval_measure": "h",
+      "interval_measure_string": "hours",
+      "protocol": "https://",
+      "port": 8086,
+      "useAuth": true,
+      "useAggregation": false,
+      "schema": [{
+        "id": "chlorinator",
+        "incrementColumnId": "time",
+        "columns": [{
+          "id": "time",
+          "dataType": "datetime"
+        }, {
+          "id": "name",
+          "dataType": "string"
+        }, {
+          "id": "status",
+          "dataType": "string"
+        }, {
+          "id": "superChlorinate",
+          "dataType": "string"
+        }, {
+          "id": "currentOutput",
+          "dataType": "float"
+        }, {
+          "id": "outputPoolPercent",
+          "dataType": "float"
+        }, {
+          "id": "outputSpaPercent",
+          "dataType": "float"
+        }, {
+          "id": "saltPPM",
+          "dataType": "float"
+        }]
+      }, {
+        "id": "circuits",
+        "incrementColumnId": "time",
+        "columns": [{
+          "id": "time",
+          "dataType": "datetime"
+        }, {
+          "id": "circuitFunction",
+          "dataType": "string"
+        }, {
+          "id": "colorStr",
+          "dataType": "string"
+        }, {
+          "id": "freeze",
+          "dataType": "string"
+        }, {
+          "id": "friendlyName",
+          "dataType": "string"
+        }, {
+          "id": "lightgroup",
+          "dataType": "string"
+        }, {
+          "id": "name",
+          "dataType": "string"
+        }, {
+          "id": "number",
+          "dataType": "string"
+        }, {
+          "id": "numberStr",
+          "dataType": "string"
+        }, {
+          "id": "freeze",
+          "dataType": "float"
+        }, {
+          "id": "status",
+          "dataType": "float"
+        }]
+      }, {
+        "id": "pumps",
+        "incrementColumnId": "time",
+        "columns": [{
+          "id": "time",
+          "dataType": "datetime"
+        }, {
+          "id": "gpm",
+          "dataType": "float"
+        }, {
+          "id": "rpm",
+          "dataType": "float"
+        }, {
+          "id": "watts",
+          "dataType": "float"
+        }, {
+          "id": "mode",
+          "dataType": "string"
+        }, {
+          "id": "power",
+          "dataType": "string"
+        }, {
+          "id": "pump",
+          "dataType": "string"
+        }, {
+          "id": "remotecontrol",
+          "dataType": "string"
+        }, {
+          "id": "run",
+          "dataType": "string"
+        }, {
+          "id": "type",
+          "dataType": "string"
+        }]
+      }, {
+        "id": "temperatures",
+        "incrementColumnId": "time",
+        "columns": [{
+          "id": "time",
+          "dataType": "datetime"
+        }, {
+          "id": "freeze",
+          "dataType": "string"
+        }, {
+          "id": "poolHeatMode",
+          "dataType": "string"
+        }, {
+          "id": "poolHeatModeStr",
+          "dataType": "string"
+        }, {
+          "id": "spaHeadModeStr",
+          "dataType": "string"
+        }, {
+          "id": "spaHeatMode",
+          "dataType": "string"
+        }, {
+          "id": "spaHeatModeStr",
+          "dataType": "string"
+        }, {
+          "id": "airTemp",
+          "dataType": "float"
+        }, {
+          "id": "poolSetPoint",
+          "dataType": "float"
+        }, {
+          "id": "poolTemp",
+          "dataType": "float"
+        }, {
+          "id": "solarTemp",
+          "dataType": "float"
+        }, {
+          "id": "spaSetPoint",
+          "dataType": "float"
+        }, {
+          "id": "spaTemp",
+          "dataType": "float"
+        }]
+      }]
+    };
+    tableau.connectionData = JSON.stringify(tableau.connectionData);
+    influx_alert("connectionData", tableau.connectionData)
+
+    //console.log("tableau.connectionData.length: %s",  tableau.connectionData.length)
+    */
+
+    if (tableau.connectionData !== undefined) {
+      if (tableau.connectionData.length > 0) {
+        try {
+          console.log('Loading previously stored values');
+          var json = JSON.parse(tableau.connectionData);
+
+          // set all local vars
+          schema = json.schema;
+          server = json.server;
+          port = json.port;
+          db = json.db;
+          protocol = json.protocol;
+          username = tableau.password;
+          useAggregation = json.useAggregation;
+          interval_time = json.interval_time;
+          interval_measure = json.interval_measure;
+          interval_measure_string = json.interval_measure_string;
+          aggregation = json.aggregation;
+
+          // set all HTML elements
+          $('#servername').val(json.server);
+          $('#servername').attr('placeholder', json.server);
+          $('#serverport').val(json.port);
+          $('.selectpicker').html('<option>' + json.db + '</option>');
+          $('.selectpicker').selectpicker('refresh');
+          $('#protocol_selector_button').html(json.protocol + '<span class="caret"></span>');
+          if (json.useAggregation) {
+            $('#aggregationGroup').removeClass('hidden');
+            $('#useAggregationCheckbox').prop("checked", "checked");
+            $('#aggregation_selector_button').html(json.aggregation + '<span class="caret"></span>');
+            $('#interval_measure_button').html(json.interval_measure_string + '<span class="caret"></span>');
+            $('#interval_time').val(json.interval_time);
+          } else {
+            $('#aggregationGroup').addClass('hidden');
+            $('#useAggregationCheckBox').prop("checked", "");
+          }
+          if (json.useAuth === true) {
+            useAuth = true;
+            $('#authGroup').removeClass('hidden');
+            $('#reloadWithAuth').attr("hidden", "hidden");
+            $('#reloadWithoutAuth').prop("hidden", "");
+            $('#username').val(tableau.username);
+            $('#password').val('');
+          } else {
+            // This section commented out.
+            // We could have the situation where the user wants to enable
+            // auth, but it wasn't previously enabled.  We don't want to hide
+            // the HTML elements in that case.
+            //$('#authGroup').addClass('hidden');
+            //$('#reloadWithoutAuth').attr("hidden", "hidden");
+            //$('#reloadWithAuth').prop("hidden", "");
+          }
+          $('#getSchemaButton').prop('disabled', false);
+        } catch (err) {
+          influx_alert('Error restoring previous values:', JSON.stringify(err));
+        }
+      }
+    }
   });
 
 

@@ -5,6 +5,10 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 
 ![Tableau WDC](images/InfluxDB_WDC.jpg)
 
+## Release Notes
+1. 1.0 - Initial version
+1. 1.1 - When editing a connection, the previous values will be restored (except for the password).  Increased, and dismissible, alert information.  
+
 ## Instructions
 
 ### Local install
