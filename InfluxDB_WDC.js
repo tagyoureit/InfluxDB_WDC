@@ -597,7 +597,7 @@
     // fill in previous values, if present
 
     // following are for testing; uncomment to see behavior in Simulator
-    tableau.username = 'admin'
+    /*tableau.username = 'admin'
     tableau.connectionData = {
       "db": "pool",
       "server": "localhost",
@@ -757,7 +757,7 @@
     influx_alert("connectionData", tableau.connectionData)
 
     //console.log("tableau.connectionData.length: %s",  tableau.connectionData.length)
-
+    */
     if (tableau.connectionData !== undefined) {
       if (tableau.connectionData.length > 0) {
         try {
