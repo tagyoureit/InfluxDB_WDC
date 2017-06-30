@@ -145,12 +145,14 @@
         // Get the tags (items that can be used in a where clause) in the measurement
         var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + measurement + "%22&db=" + db;
         if (useAuth) {
+          setAuth();
           queryString_tags += queryString_Auth;
         }
 
         // Get fields/values
         var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + measurement + "%22&db=" + db;
         if (useAuth) {
+          setAuth();
           queryString_fields += queryString_Auth;
         }
 
@@ -181,7 +183,12 @@
     });
   }
 
-
+  function setAuth() {
+    username = $('#username').val();
+    password = $('#password').val();
+    queryString_Auth = "&u=" + username + "&p=" + password;
+    queryString_Auth_Log = "&u=" + username + "&p=[redacted]";
+  }
 
   function getDBs() {
 
@@ -232,10 +239,7 @@
 
       var queryString_DBs = protocol + server + ":" + port + "/query?q=SHOW+DATABASES";
       if (useAuth) {
-        username = $('#username').val();
-        password = $('#password').val();
-        queryString_Auth = "&u=" + username + "&p=" + password;
-        queryString_Auth_Log = "&u=" + username + "&p=[redacted]";
+        setAuth();
         queryString_DBs += queryString_Auth;
       }
 
@@ -245,6 +249,7 @@
           dataType: "json",
           timeout: 3000,
           success: function(resp) {
+            console.log('resp.statuscode:', resp.statuscode)
             if (debug) console.log(resp.results[0].series[0].values);
 
             $('.selectpicker').html('');
@@ -261,7 +266,7 @@
           // alert("done")
         })
         .fail(function(err) {
-          influx_alert("Error loading database",JSON.stringify(err));
+          influx_alert("Error loading database", JSON.stringify(err));
         });
     });
 
@@ -273,18 +278,21 @@
     });
 
     $('#getSchemaButton').click(function() {
+      console.log('clicked')
+      console.log('useauth? ', useAuth)
       db = $('#db_dropdown option:selected').text();
       var queryString = protocol + server + ":" + port + "/query?q=SHOW+MEASUREMENTS&db=" + db;
       if (useAuth) {
+        setAuth();
         queryString += queryString_Auth;
       }
       getMeasurements(db, queryString);
     });
   }
 
-  function influx_alert(errorType, err){
+  function influx_alert(errorType, err) {
     console.log(err);
-    $('#influx_alert').html('<a class="close" onclick="$(\'.alert\').hide()">×</a><div class=\'alert alert-error\'><strong>' + errorType  + ': </strong>' + err + "</div>");
+    $('#influx_alert').html('<a class="close" onclick="$(\'.alert\').hide()">×</a><div class=\'alert alert-error\'><strong>' + errorType + ': </strong>' + err + "</div>");
     $('#influx_alert').fadeIn();
   }
 
@@ -487,7 +495,6 @@
                     if (total_rows % 20000 === 0 && total_rows !== 0) {
                       console.log("Getting data: " + total_rows + " rows");
                       tableau.reportProgress("Getting data: " + total_rows.toLocaleString() + " rows");
-
                     } else if (total_rows === 0) {
                       console.log("Getting data: 0 rows - Starting Extract");
                       tableau.reportProgress("Getting data: 0 rows - Starting Extract");
@@ -590,15 +597,15 @@
     // fill in previous values, if present
 
     // following are for testing; uncomment to see behavior in Simulator
-    /* tableau.username = 'my_user'
+    tableau.username = 'admin'
     tableau.connectionData = {
       "db": "pool",
-      "server": "11.11.11.170",
+      "server": "localhost",
       "aggregation": "count",
       "interval_time": "110",
       "interval_measure": "h",
       "interval_measure_string": "hours",
-      "protocol": "https://",
+      "protocol": "http://",
       "port": 8086,
       "useAuth": true,
       "useAggregation": false,
@@ -750,7 +757,6 @@
     influx_alert("connectionData", tableau.connectionData)
 
     //console.log("tableau.connectionData.length: %s",  tableau.connectionData.length)
-    */
 
     if (tableau.connectionData !== undefined) {
       if (tableau.connectionData.length > 0) {
