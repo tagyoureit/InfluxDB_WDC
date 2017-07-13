@@ -53,28 +53,30 @@
       </div>
     </div>
 
-    <div class="row vertical-center-row" style="margin: 10px;" id="authGroup">
+    <div class="row" style="margin: 10px;" id="authGroup">
+
+      <div class="col-sm-4 col-sm-offset-2 col-xs-4 col-xs-offset-2">
+        <div class="input-group">
 
 
-      <div class="input-group text-center col-sm-4 col-sm-offset-2">
+          <span class="input-group-addon" id="basic-addon1">Username</span>
 
+          <input type="text" class="form-control" placeholder="Username" aria-describedby="basic-addon1" id="username" style="">
 
-        <span class="input-group-addon" id="basic-addon1">Username</span>
-
-        <input type="text" class="form-control" placeholder="Username" aria-describedby="basic-addon1" id="username">
-
+        </div>
       </div>
-      <div class="input-group text-center col-sm-4 col-sm-offset-6">
+      <div class="col-sm-4 col-xs-4">
+        <div class="input-group">
 
-        <!-- <span class="input-group-addon" id="basic-addon1">Password</span>
+          <!-- <span class="input-group-addon" id="basic-addon1">Password</span>
       <input type="text" class="form-control" placeholder="password" aria-describedby="basic-addon1" id="password"> -->
-        <input id="password" data-toggle="password" data-placement="before" class="form-control" type="password" value="" data-message="Show/hide password" placeholder="">
+          <input id="password" data-toggle="password" data-placement="before" class="form-control" type="password" value="" data-message="Show/hide password" placeholder="">
+        </div>
       </div>
-
 
     </div>
 
-    <div class="row">
+    <div class="row"  style="margin: 10px;" >
       <div class="col-sm-4 col-sm-offset-2 col-xs-4 col-xs-offset-2">
         <div class="input-group">
 
@@ -100,14 +102,14 @@
     </div>
 
     <div class="row">
-        <div class="text-center">
-          <p>
-          </p>
-          <input type="checkbox" class="basic-addon1" id="useAggregationCheckBox"> Use Aggregation
+      <div class="text-center">
+        <p>
+        </p>
+        <input type="checkbox" class="basic-addon1" id="useAggregationCheckBox"> Use Aggregation
 
       </div>
     </div>
-    <div class="row vertical-center-row" style="padding:10px" id="aggregationGroup">
+    <div class="row vertical-center-row"  style="margin: 10px;"  id="aggregationGroup">
       <div class="col-sm-4 col-sm-offset-2 col-xs-4 col-xs-offset-2">
 
 
@@ -139,7 +141,7 @@
         <!-- /input-group -->
       </div>
 
-<div class="col-xs-4 col-sm-4">
+      <div class="col-xs-4 col-sm-4">
         <div class="input-group" style="margin: 0 auto;">
           <!-- /btn-group -->
           <span class="input-group-addon" id="basic-addon1">Interval</span>
@@ -163,10 +165,10 @@
           </div>
 
         </div>
-</div>
+      </div>
 
 
-        <!-- /row -->
+      <!-- /row -->
 
     </div>
 
@@ -182,11 +184,11 @@
       <div class="text-center col-xs-4 col-sm-4 col-md-4 col-md-offset-4 col-xs-offset-4 col-sm-offset-4 col-md-offset-4">
         <select class="selectpicker" id="db_dropdown">
          </select>
-       </div>
-</div>
-       <div class="row vertical-center-row">
+      </div>
+    </div>
+    <div class="row vertical-center-row">
 
-       <div class="text-center col-xs-4 col-sm-4 col-md-4 col-md-offset-4 col-xs-offset-4 col-sm-offset-4 col-md-offset-4">
+      <div class="text-center col-xs-4 col-sm-4 col-md-4 col-md-offset-4 col-xs-offset-4 col-sm-offset-4 col-md-offset-4">
 
         <button type="button" id="getSchemaButton" class="btn btn-primary" style="margin: 10px;" disabled>2. Load Data into Tableau</button>
 
