@@ -36,8 +36,40 @@
 // from https://docs.influxdata.com/influxdb/v1.2/write_protocols/line_protocol_tutorial/#special-characters-and-keywords
 // Influx allows <, = space "> which can't be used as a Tableau id field (https://github.com/tagyoureit/InfluxDB_WDC/issues/3)
 // Tableau only allows letters, numbers or underscores
-function replaceSpecialChars(str) {
-  return str.replace(' ','_').replace('"', '_doublequote_').replace(',','_comma_').replace('=','_equal_');
+function replaceSpecialChars_forTableau_ID(str) {
+
+  var newStr = str.replace(/ /g,'_')
+  .replace(/"/g, '_doublequote_')
+  .replace(/,/g,'_comma_')
+  .replace(/=/g,'_equal_')
+  .replace(/\//g,'_fslash_')
+  .replace(/-/g,'_dash_')
+  .replace(/[^A-Za-z0-9_]/g,'_');
+  //console.log('replace before: %s  after: %s', str, newStr);
+  return newStr;
+}
+
+function influx_escape_char_for_URI(str) {
+  //console.log("influx_escape_char_for_URI escape: %s", str)
+  var newStr = str.replace(/\\/g,'\\\\')
+  //  console.log('influx_escape_char_for_URI replace \\: %s', newStr)
+  newStr = newStr.replace(/\//g,'//')
+  //console.log('influx_escape_char_for_URI replace /: %s', newStr)
+
+
+  newStr = newStr.replace(/ /g,'%20')
+  //console.log('influx_escape_char_for_URI replace / (space): %s', newStr)
+  newStr = newStr.replace(/"/g, '\\"')
+  //console.log('influx_escape_char_for_URI replace /": %s', newStr)
+  //.replace(/,/g,'\\,')
+  //.replace(/=/g,'\\=')
+
+
+  //.replace(/-/g,'_dash_')
+  //.replace(/[^A-Za-z0-9_]/g,'_');
+  //console.log('replace in URI before: %s  after: %s', str, newStr);
+  return newStr;
+
 }
 
   function resetSchema() {
@@ -57,7 +89,7 @@ function replaceSpecialChars(str) {
       var deferreds = (tags.results[0].series[0].values).map(function(tag, tag_index) {
         if (debug) console.log("in queryStringTags.  tag: %s  tag_index: %s", tag[0], tag_index);
         schema[index].columns.push({
-          id: replaceSpecialChars(tag[0]),
+          id: replaceSpecialChars_forTableau_ID(tag[0]),
           alias: tag[0],
           dataType: tableau.dataTypeEnum.string
         });
@@ -83,10 +115,10 @@ function replaceSpecialChars(str) {
         if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
         var id_str, alias_str;
         if (useAggregation) {
-          id_str = aggregation + '_' + replaceSpecialChars(field[0]);
+          id_str = aggregation + '_' + replaceSpecialChars_forTableau_ID(field[0]);
           alias_str = aggregation + '_' + field[0]
         } else {
-          id_str = replaceSpecialChars(field[0]);
+          id_str = replaceSpecialChars_forTableau_ID(field[0]);
           alias_str = field[0]
         }
         // force the correct mapping of data types
@@ -123,7 +155,7 @@ function replaceSpecialChars(str) {
   function addTimeTag() {
     // the "time" tag isn't returnedy by the schema.  Add it to every measurement.
     $.each(schema, function(index, e) {
-      if (debug) console.log("e: %s   index: %s", e, index);
+      //if (debug) console.log("e: %s   index: %s", e, index);
 
       schema[index].columns.unshift({
         id: 'time',
@@ -142,7 +174,7 @@ function replaceSpecialChars(str) {
       // for each measurement, save the async function to a "factory" array
       var deferreds = (resp.results[0].series[0].values).map(function(measurement, index) {
         schema[index] = {
-          id: replaceSpecialChars(measurement[0]),
+          id: replaceSpecialChars_forTableau_ID(measurement[0]),
           alias: measurement[0],
           incrementColumnId: "time",
           columns: []
@@ -155,14 +187,16 @@ function replaceSpecialChars(str) {
         var deferred_tags_and_fields = [];
 
         // Get the tags (items that can be used in a where clause) in the measurement
-        var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + measurement + "%22&db=" + db;
+        var newM = influx_escape_char_for_URI(measurement[0]);
+        //console.log('meausrement: %s  newM: %s', measurement[0], newM)
+        var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + newM + "%22&db=" + db;
         if (useAuth) {
           setAuth();
           queryString_tags += queryString_Auth;
         }
 
         // Get fields/values
-        var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + measurement + "%22&db=" + db;
+        var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + newM + "%22&db=" + db;
         if (useAuth) {
           setAuth();
           queryString_fields += queryString_Auth;
@@ -261,7 +295,7 @@ function replaceSpecialChars(str) {
           dataType: "json",
           timeout: 3000,
           success: function(resp) {
-            console.log('resp.statuscode:', resp.statuscode)
+            //console.log('resp.statuscode:', resp.statuscode)
             if (debug) console.log(resp.results[0].series[0].values);
 
             $('.selectpicker').html('');
@@ -290,8 +324,6 @@ function replaceSpecialChars(str) {
     });
 
     $('#getSchemaButton').click(function() {
-      console.log('clicked')
-      console.log('useauth? ', useAuth)
       db = $('#db_dropdown option:selected').text();
       var queryString = protocol + server + ":" + port + "/query?q=SHOW+MEASUREMENTS&db=" + db;
       if (useAuth) {
@@ -370,11 +402,11 @@ function replaceSpecialChars(str) {
     } else {
       dataString += '*';
     }
-    console.log('what is table.tableInfo.id: ', table.tableInfo.id)
-    console.log('what is table.tableInfo: ', table.tableInfo)
+    //console.log('what is table.tableInfo.id: ', table.tableInfo.id)
+    //console.log('what is table.tableInfo: ', table.tableInfo)
 
-    // need to specifically replace <space> with %20 to make a valid URL
-    dataString += '+from+%22' + encodeURIComponent(table.tableInfo.alias).replace(' ', '%20') + '%22';
+
+    dataString += '+from+%22' + influx_escape_char_for_URI(table.tableInfo.alias) + '%22';
     if (json.useAggregation) {
       if (lastId !== -1) {
         // incremental refresh with aggregation
@@ -430,7 +462,7 @@ function replaceSpecialChars(str) {
             resp = resultsArray;
           }
 
-          console.log("full results: ", resp)
+        //  console.log("full results: ", resp)
 
           //console.log("number of rows: ", resp.results[0].series[0].values.length)
           var values, columns, tags, val, val_len, col, col_len, response_array, series, series_cnt, row, total_rows;
@@ -458,7 +490,7 @@ function replaceSpecialChars(str) {
                 for (val = 0, val_len = values.length; val < val_len; val++) {
                   row = {};
                   for (col = 0, col_len = columns.length; col < col_len; col++) {
-                    row[replaceSpecialChars(columns[col])] = values[val][col];
+                    row[replaceSpecialChars_forTableau_ID(columns[col])] = values[val][col];
                   }
                   tableData.push(row);
 
@@ -506,8 +538,8 @@ function replaceSpecialChars(str) {
                     for (var key in obj) {
                       console.log('key: %s  obj: %s', key, obj[key])
                       if (obj.hasOwnProperty(key)) {
-                        row[replaceSpecialChars(key)] = obj[key];
-                        console.log('adding tag row: %s: %s', replaceSpecialChars(key), obj[key])
+                        row[replaceSpecialChars_forTableau_ID(key)] = obj[key];
+                        console.log('adding tag row: %s: %s', replaceSpecialChars_forTableau_ID(key), obj[key])
                       }
                     }
                     for (col = 0, col_len = columns.length; col < col_len; col++) {
@@ -515,8 +547,8 @@ function replaceSpecialChars(str) {
                        console.log("val=%s  col=%s", val, col)
                        console.log("row[series[series_cnt].columns[col]]:", series[series_cnt].columns[col])
                        console.log("series[series_cnt].values[val][col]", series[series_cnt].values[val][col])
-                      row[replaceSpecialChars(series[series_cnt].columns[col])] = series[series_cnt].values[val][col];
-                      console.log('adding col row: %s: %s', replaceSpecialChars(series[series_cnt].columns[col]), series[series_cnt].values[val][col])
+                      row[replaceSpecialChars_forTableau_ID(series[series_cnt].columns[col])] = series[series_cnt].values[val][col];
+                      console.log('adding col row: %s: %s', replaceSpecialChars_forTableau_ID(series[series_cnt].columns[col]), series[series_cnt].values[val][col])
                     }
                     console.log("pushing row: ", row)
                     tableData.push(row);
@@ -590,10 +622,10 @@ function replaceSpecialChars(str) {
       var _url;
       if (window.location.href.indexOf('?') === -1) {
         _url = window.location.href;
-        console.log("_url (-1):" + _url);
+        //console.log("_url (-1):" + _url);
       } else {
         _url = window.location.href.slice(0, window.location.href.indexOf('?'));
-        console.log("_url (#):" + _url);
+        //console.log("_url (#):" + _url);
 
       }
 
@@ -603,7 +635,7 @@ function replaceSpecialChars(str) {
         _url += "?auth=false";
 
       }
-      console.log("Will open: " + _url);
+      //console.log("Will open: " + _url);
       window.open(_url, 'wdc', '_self');
 
     });
