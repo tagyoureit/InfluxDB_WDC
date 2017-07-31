@@ -33,6 +33,29 @@
     return vars;
   }
 
+// from https://docs.influxdata.com/influxdb/v1.2/write_protocols/line_protocol_tutorial/#special-characters-and-keywords
+// Influx allows <, = space "> which can't be used as a Tableau id field (https://github.com/tagyoureit/InfluxDB_WDC/issues/3)
+// Tableau only allows letters, numbers or underscores
+function replaceSpecialChars_forTableau_ID(str) {
+
+  var newStr = str.replace(/ /g,'_')
+  .replace(/"/g, '_doublequote_')
+  .replace(/,/g,'_comma_')
+  .replace(/=/g,'_equal_')
+  .replace(/\//g,'_fslash_')
+  .replace(/-/g,'_dash_')
+  .replace(/[^A-Za-z0-9_]/g,'_');
+  return newStr;
+}
+
+function influx_escape_char_for_URI(str) {
+  var newStr = str.replace(/\\/g,'\\\\');
+  newStr = newStr.replace(/\//g,'//');
+  newStr = newStr.replace(/ /g,'%20');
+  newStr = newStr.replace(/"/g, '\\"');
+  return newStr;
+}
+
   function resetSchema() {
     schema = [];
     console.log("Schema has been reset");
@@ -50,7 +73,8 @@
       var deferreds = (tags.results[0].series[0].values).map(function(tag, tag_index) {
         if (debug) console.log("in queryStringTags.  tag: %s  tag_index: %s", tag[0], tag_index);
         schema[index].columns.push({
-          id: tag[0],
+          id: replaceSpecialChars_forTableau_ID(tag[0]),
+          alias: tag[0],
           dataType: tableau.dataTypeEnum.string
         });
         if (debug) console.log(schema);
@@ -73,11 +97,13 @@
     $.getJSON(queryString_fields, function(fields) {
       var deferreds = (fields.results[0].series[0].values).map(function(field, field_index) {
         if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
-        var id_str;
+        var id_str, alias_str;
         if (useAggregation) {
-          id_str = aggregation + '_' + field[0];
+          id_str = aggregation + '_' + replaceSpecialChars_forTableau_ID(field[0]);
+          alias_str = aggregation + '_' + field[0];
         } else {
-          id_str = field[0];
+          id_str = replaceSpecialChars_forTableau_ID(field[0]);
+          alias_str = field[0];
         }
         // force the correct mapping of data types
         var tabDataType;
@@ -97,6 +123,7 @@
         }
         schema[index].columns.push({
           id: id_str,
+          alias: alias_str,
           dataType: tabDataType
         });
       });
@@ -110,10 +137,8 @@
   }
 
   function addTimeTag() {
-    // the "time" tag isn't returnedy by the schema.  Add it to every measurement.
+    // the "time" tag isn't returned by the schema.  Add it to every measurement.
     $.each(schema, function(index, e) {
-      if (debug) console.log("e: %s   index: %s", e, index);
-
       schema[index].columns.unshift({
         id: 'time',
         dataType: tableau.dataTypeEnum.datetime
@@ -131,7 +156,8 @@
       // for each measurement, save the async function to a "factory" array
       var deferreds = (resp.results[0].series[0].values).map(function(measurement, index) {
         schema[index] = {
-          id: measurement[0],
+          id: replaceSpecialChars_forTableau_ID(measurement[0]),
+          alias: measurement[0],
           incrementColumnId: "time",
           columns: []
         };
@@ -139,18 +165,18 @@
         if (debug) console.log("analyzing index: %s measurement: %s ", index, measurement[0]);
         if (debug) console.log("schema now is: %o", schema);
 
-        //
         var deferred_tags_and_fields = [];
 
         // Get the tags (items that can be used in a where clause) in the measurement
-        var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + measurement + "%22&db=" + db;
+        var newM = influx_escape_char_for_URI(measurement[0]);
+        var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + newM + "%22&db=" + db;
         if (useAuth) {
           setAuth();
           queryString_tags += queryString_Auth;
         }
 
         // Get fields/values
-        var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + measurement + "%22&db=" + db;
+        var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + newM + "%22&db=" + db;
         if (useAuth) {
           setAuth();
           queryString_fields += queryString_Auth;
@@ -249,7 +275,6 @@
           dataType: "json",
           timeout: 3000,
           success: function(resp) {
-            console.log('resp.statuscode:', resp.statuscode)
             if (debug) console.log(resp.results[0].series[0].values);
 
             $('.selectpicker').html('');
@@ -278,8 +303,6 @@
     });
 
     $('#getSchemaButton').click(function() {
-      console.log('clicked')
-      console.log('useauth? ', useAuth)
       db = $('#db_dropdown option:selected').text();
       var queryString = protocol + server + ":" + port + "/query?q=SHOW+MEASUREMENTS&db=" + db;
       if (useAuth) {
@@ -358,7 +381,7 @@
     } else {
       dataString += '*';
     }
-    dataString += "+from+" + table.tableInfo.id;
+    dataString += '+from+%22' + influx_escape_char_for_URI(table.tableInfo.alias) + '%22';
     if (json.useAggregation) {
       if (lastId !== -1) {
         // incremental refresh with aggregation
@@ -380,6 +403,7 @@
     dataString += "&chunked=true"; // add this to force chunking
     //dataString += "&chunk_size=20000"   // add this to force a certain data set size
     //dataString += "&chunked=false"
+
     if (json.useAuth) {
       dataString += "&u=" + tableau.username + "&p=" + tableau.password;
     }
@@ -413,7 +437,6 @@
             resp = resultsArray;
           }
 
-          //console.log("number of rows: ", resp.results[0].series[0].values.length)
           var values, columns, tags, val, val_len, col, col_len, response_array, series, series_cnt, row, total_rows;
 
           // Need this line for incremental refresh.  If there are no additional results than this set will be undefined.
@@ -426,7 +449,7 @@
               if (debug) {
                 console.log("columns:", columns);
                 console.log("first row of values: ", values[0]);
-                console.log("Total # of rows for " + table.tableInfo.id + " is: " + values.length);
+                console.log("Total # of rows for " + table.tableInfo.alias + " is: " + values.length);
                 console.log("Using Aggregation: " + json.useAggregation);
               }
 
@@ -439,7 +462,7 @@
                 for (val = 0, val_len = values.length; val < val_len; val++) {
                   row = {};
                   for (col = 0, col_len = columns.length; col < col_len; col++) {
-                    row[columns[col]] = values[val][col];
+                    row[replaceSpecialChars_forTableau_ID(columns[col])] = values[val][col];
                   }
                   tableData.push(row);
 
@@ -461,17 +484,17 @@
                 console.log("first row of tags:", series[0].tags);
                 console.log("first row of columns:", series[0].columns);
                 console.log("first row of values: ", series[0].values);
-                console.log("Total # of result sets (%s) series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", resp.length, series.length, series[0].columns.length, series[0].values.length, resp.length * series.length * series[0].columns.length * series[0].values.length, table.tableInfo.id);
+                console.log("Total # of result sets (%s) series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", resp.length, series.length, series[0].columns.length, series[0].values.length, resp.length * series.length * series[0].columns.length * series[0].values.length, table.tableInfo.alias);
               }
 
               total_rows = 0;
               for (response_array = 0; response_array < resp.length; response_array++) {
+                series = resp[response_array].results[0].series;
                 values = resp[response_array].results[0].series[0].values;
                 columns = resp[response_array].results[0].series[0].columns;
 
                 //Iterate over the result set
                 for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
-
 
                   values = series[series_cnt].values;
                   for (val = 0, val_len = values.length; val < val_len; val++) {
@@ -482,17 +505,12 @@
                     var obj = series[series_cnt].tags;
                     for (var key in obj) {
                       if (obj.hasOwnProperty(key)) {
-                        row[key] = obj[key];
+                        row[replaceSpecialChars_forTableau_ID(key)] = obj[key];
                       }
                     }
                     for (col = 0, col_len = columns.length; col < col_len; col++) {
-
-                      // console.log("val=%s  col=%s", val, col)
-                      // console.log("row[series[series_cnt].columns[col]]:", series[series_cnt].columns[col])
-                      // console.log("series[series_cnt].values[val][col]", series[series_cnt].values[val][col])
-                      row[series[series_cnt].columns[col]] = series[series_cnt].values[val][col];
+                      row[replaceSpecialChars_forTableau_ID(series[series_cnt].columns[col])] = series[series_cnt].values[val][col];
                     }
-
                     tableData.push(row);
 
                     if (total_rows % 20000 === 0 && total_rows !== 0) {
@@ -532,7 +550,6 @@
 
   $(document).ready(function() {
     var urlVars = getUrlVars();
-    console.log("currentURL: " + window.location.href + "  urlVars[auth]: " + urlVars.auth);
 
     if (urlVars.auth === 'true' || urlVars.auth === true) {
       useAuth = true;
@@ -560,15 +577,11 @@
     }
 
     $('#useAuthCheckBox').click(function() {
-      console.log("url:" + window.location.href + " indexof(?): " + window.location.href.indexOf('?') + " window.slice: " + window.location.href.slice(0, window.location.href.indexOf('?') + 1));
       var _url;
       if (window.location.href.indexOf('?') === -1) {
         _url = window.location.href;
-        console.log("_url (-1):" + _url);
       } else {
         _url = window.location.href.slice(0, window.location.href.indexOf('?'));
-        console.log("_url (#):" + _url);
-
       }
 
       if ($(this).attr("checked") === undefined) {
@@ -577,7 +590,6 @@
         _url += "?auth=false";
 
       }
-      console.log("Will open: " + _url);
       window.open(_url, 'wdc', '_self');
 
     });
