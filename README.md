@@ -6,7 +6,7 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.jpg)
 
 ## Release Notes
-1. 1.2 - Added support for special characters - <space>, <comma>, <forward and backward slash>, <single and double quote>, <dash> and other special characters.
+1. 1.2 - Added support for special characters - ` (space)`, `,`, `\ and /`, `' and "`,`-` and other special characters.
 1. 1.1 - When editing a connection, the previous values will be restored (except for the password).  Increased, and dismissible, alert information.  Formatting of # of rows returned with ",".
 1. 1.0 - Initial version
 
