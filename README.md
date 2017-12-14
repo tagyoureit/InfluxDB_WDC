@@ -6,6 +6,8 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.jpg)
 
 ## Release Notes
+1. 1.4 - Added protocol <code>https+influxdb:\\</code> per Issue #4.
+1. 1.3 - Additional error logging.
 1. 1.2 - Added support for special characters - ` (space)`, `,`, `\ and /`, `' and "`,`-` and other special characters.
 1. 1.1 - When editing a connection, the previous values will be restored (except for the password).  Increased, and dismissible, alert information.  Formatting of # of rows returned with ",".
 1. 1.0 - Initial version

@@ -33,28 +33,28 @@
     return vars;
   }
 
-// from https://docs.influxdata.com/influxdb/v1.2/write_protocols/line_protocol_tutorial/#special-characters-and-keywords
-// Influx allows <, = space "> which can't be used as a Tableau id field (https://github.com/tagyoureit/InfluxDB_WDC/issues/3)
-// Tableau only allows letters, numbers or underscores
-function replaceSpecialChars_forTableau_ID(str) {
+  // from https://docs.influxdata.com/influxdb/v1.2/write_protocols/line_protocol_tutorial/#special-characters-and-keywords
+  // Influx allows <, = space "> which can't be used as a Tableau id field (https://github.com/tagyoureit/InfluxDB_WDC/issues/3)
+  // Tableau only allows letters, numbers or underscores
+  function replaceSpecialChars_forTableau_ID(str) {
 
-  var newStr = str.replace(/ /g,'_')
-  .replace(/"/g, '_doublequote_')
-  .replace(/,/g,'_comma_')
-  .replace(/=/g,'_equal_')
-  .replace(/\//g,'_fslash_')
-  .replace(/-/g,'_dash_')
-  .replace(/[^A-Za-z0-9_]/g,'_');
-  return newStr;
-}
+    var newStr = str.replace(/ /g, '_')
+      .replace(/"/g, '_doublequote_')
+      .replace(/,/g, '_comma_')
+      .replace(/=/g, '_equal_')
+      .replace(/\//g, '_fslash_')
+      .replace(/-/g, '_dash_')
+      .replace(/[^A-Za-z0-9_]/g, '_');
+    return newStr;
+  }
 
-function influx_escape_char_for_URI(str) {
-  var newStr = str.replace(/\\/g,'\\\\');
-  newStr = newStr.replace(/\//g,'//');
-  newStr = newStr.replace(/ /g,'%20');
-  newStr = newStr.replace(/"/g, '\\"');
-  return newStr;
-}
+  function influx_escape_char_for_URI(str) {
+    var newStr = str.replace(/\\/g, '\\\\');
+    newStr = newStr.replace(/\//g, '//');
+    newStr = newStr.replace(/ /g, '%20');
+    newStr = newStr.replace(/"/g, '\\"');
+    return newStr;
+  }
 
   function resetSchema() {
     schema = [];
@@ -63,30 +63,35 @@ function influx_escape_char_for_URI(str) {
   resetSchema();
 
   function queryStringTags(index, queryString_tags) {
-    if (debug) console.log('Retrieving tagis with query: %s', queryString_tags);
+    if (debug) console.log('Retrieving tags with query: %s', queryString_tags);
     // Create a JQuery Promise object
     var deferred = $.Deferred();
     $.getJSON(queryString_tags, function(tags) {
-      if (debug) console.log('tag query string for ' + index + ": " + JSON.stringify(tags));
+        if (debug) console.log('tag query string for ' + index + ": " + JSON.stringify(tags));
 
-      // Create a factory (array) of async functions
-      var deferreds = (tags.results[0].series[0].values).map(function(tag, tag_index) {
-        if (debug) console.log("in queryStringTags.  tag: %s  tag_index: %s", tag[0], tag_index);
-        schema[index].columns.push({
-          id: replaceSpecialChars_forTableau_ID(tag[0]),
-          alias: tag[0],
-          dataType: tableau.dataTypeEnum.string
+        // Create a factory (array) of async functions
+        var deferreds = (tags.results[0].series[0].values).map(function(tag, tag_index) {
+          if (debug) console.log("in queryStringTags.  tag: %s  tag_index: %s", tag[0], tag_index);
+          schema[index].columns.push({
+            id: replaceSpecialChars_forTableau_ID(tag[0]),
+            alias: tag[0],
+            dataType: tableau.dataTypeEnum.string
+          });
+          if (debug) console.log(schema);
         });
-        if (debug) console.log(schema);
+
+        // Execute all async functions in array
+        return $.when.apply($, deferreds)
+          .then(function() {
+            if (debug) console.log('finished processing tags');
+            deferred.resolve();
+          });
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        tableau.abortWithError(errorThrown);
+        console.log(errorThrown);
+        doneCallback();
       });
-
-      // Execute all async functions in array
-      return $.when.apply($, deferreds)
-        .then(function() {
-          if (debug) console.log('finished processing tags');
-          deferred.resolve();
-        });
-    });
     return deferred.promise();
 
   }
@@ -95,44 +100,49 @@ function influx_escape_char_for_URI(str) {
     var deferred = $.Deferred();
     if (debug) console.log('Retrieving fields with query: %s', queryString_fields);
     $.getJSON(queryString_fields, function(fields) {
-      var deferreds = (fields.results[0].series[0].values).map(function(field, field_index) {
-        if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
-        var id_str, alias_str;
-        if (useAggregation) {
-          id_str = aggregation + '_' + replaceSpecialChars_forTableau_ID(field[0]);
-          alias_str = aggregation + '_' + field[0];
-        } else {
-          id_str = replaceSpecialChars_forTableau_ID(field[0]);
-          alias_str = field[0];
-        }
-        // force the correct mapping of data types
-        var tabDataType;
-        switch (field[1]) {
-          case 'float':
-            tabDataType = tableau.dataTypeEnum.float;
-            break;
-          case 'integer':
-            tabDataType = tableau.dataTypeEnum.int;
-            break;
-          case 'string':
-            tabDataType = tableau.dataTypeEnum.string;
-            break;
-          case 'boolean':
-            tabDataType = tableau.dataTypeEnum.bool;
-            break;
-        }
-        schema[index].columns.push({
-          id: id_str,
-          alias: alias_str,
-          dataType: tabDataType
+        var deferreds = (fields.results[0].series[0].values).map(function(field, field_index) {
+          if (debug) console.log("in queryStringFields.  field: %s  field_index: %s", field[0], field_index);
+          var id_str, alias_str;
+          if (useAggregation) {
+            id_str = aggregation + '_' + replaceSpecialChars_forTableau_ID(field[0]);
+            alias_str = aggregation + '_' + field[0];
+          } else {
+            id_str = replaceSpecialChars_forTableau_ID(field[0]);
+            alias_str = field[0];
+          }
+          // force the correct mapping of data types
+          var tabDataType;
+          switch (field[1]) {
+            case 'float':
+              tabDataType = tableau.dataTypeEnum.float;
+              break;
+            case 'integer':
+              tabDataType = tableau.dataTypeEnum.int;
+              break;
+            case 'string':
+              tabDataType = tableau.dataTypeEnum.string;
+              break;
+            case 'boolean':
+              tabDataType = tableau.dataTypeEnum.bool;
+              break;
+          }
+          schema[index].columns.push({
+            id: id_str,
+            alias: alias_str,
+            dataType: tabDataType
+          });
         });
+        return $.when.apply($, deferreds)
+          .then(function() {
+            if (debug) console.log('finished processing fields');
+            deferred.resolve();
+          });
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        tableau.abortWithError(errorThrown);
+        console.log(errorThrown);
+        doneCallback();
       });
-      return $.when.apply($, deferreds)
-        .then(function() {
-          if (debug) console.log('finished processing fields');
-          deferred.resolve();
-        });
-    });
     return deferred.promise();
   }
 
@@ -149,64 +159,71 @@ function influx_escape_char_for_URI(str) {
 
   function getMeasurements(db, queryString) {
     // Get all measurements (aka Tables) from the DB
+
     $.getJSON(queryString, function(resp) {
-      if (debug) console.log('retrieved all measurements: %o', resp);
-      if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
+        if (debug) console.log('retrieved all measurements: %o', resp);
+        if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
 
-      // for each measurement, save the async function to a "factory" array
-      var deferreds = (resp.results[0].series[0].values).map(function(measurement, index) {
-        schema[index] = {
-          id: replaceSpecialChars_forTableau_ID(measurement[0]),
-          alias: measurement[0],
-          incrementColumnId: "time",
-          columns: []
-        };
-        if (debug) console.log(schema);
-        if (debug) console.log("analyzing index: %s measurement: %s ", index, measurement[0]);
-        if (debug) console.log("schema now is: %o", schema);
+        // for each measurement, save the async function to a "factory" array
+        var deferreds = (resp.results[0].series[0].values).map(function(measurement, index) {
+          schema[index] = {
+            id: replaceSpecialChars_forTableau_ID(measurement[0]),
+            alias: measurement[0],
+            incrementColumnId: "time",
+            columns: []
+          };
+          if (debug) console.log(schema);
+          if (debug) console.log("analyzing index: %s measurement: %s ", index, measurement[0]);
+          if (debug) console.log("schema now is: %o", schema);
 
-        var deferred_tags_and_fields = [];
+          var deferred_tags_and_fields = [];
 
-        // Get the tags (items that can be used in a where clause) in the measurement
-        var newM = influx_escape_char_for_URI(measurement[0]);
-        var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + newM + "%22&db=" + db;
-        if (useAuth) {
-          setAuth();
-          queryString_tags += queryString_Auth;
-        }
+          // Get the tags (items that can be used in a where clause) in the measurement
+          var newM = influx_escape_char_for_URI(measurement[0]);
+          var queryString_tags = protocol + server + ":" + port + "/query?q=SHOW+TAG+KEYS+FROM+%22" + newM + "%22&db=" + db;
+          if (useAuth) {
+            setAuth();
+            queryString_tags += queryString_Auth;
+          }
 
-        // Get fields/values
-        var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + newM + "%22&db=" + db;
-        if (useAuth) {
-          setAuth();
-          queryString_fields += queryString_Auth;
-        }
+          // Get fields/values
+          var queryString_fields = protocol + server + ":" + port + "/query?q=SHOW+FIELD+KEYS+FROM+%22" + newM + "%22&db=" + db;
+          if (useAuth) {
+            setAuth();
+            queryString_fields += queryString_Auth;
+          }
 
-        deferred_tags_and_fields.push(queryStringTags(index, queryString_tags));
-        deferred_tags_and_fields.push(queryStringFields(index, queryString_fields));
+          deferred_tags_and_fields.push(queryStringTags(index, queryString_tags));
+          deferred_tags_and_fields.push(queryStringFields(index, queryString_fields));
 
-        return $.when.apply($, deferred_tags_and_fields)
+          return $.when.apply($, deferred_tags_and_fields)
+            .then(function() {
+              if (debug) console.log('finished processing queryStringTags and queryStringFields for %s', measurement[0]);
+            });
+
+
+
+        });
+
+        return $.when.apply($, deferreds)
           .then(function() {
-            if (debug) console.log('finished processing queryStringTags and queryStringFields for %s', measurement[0]);
+            if (debug) console.log('Finished getting ALL tags and fields for ALL measurements.  Hooray!');
+            if (debug) console.log("schema is now: %o", schema);
+          })
+          .then(addTimeTag)
+          .then(function() {
+            if (debug) console.log("schema finally: %o", schema);
+
+            // Once we have the tags/fields enable the Load button
+            tableauSubmit();
           });
-
-
-
+      })
+      .fail(function(jqXHR, textStatus, errorThrown) {
+        tableau.abortWithError(errorThrown);
+        console.log(errorThrown);
+        doneCallback();
       });
 
-      return $.when.apply($, deferreds)
-        .then(function() {
-          if (debug) console.log('Finished getting ALL tags and fields for ALL measurements.  Hooray!');
-          if (debug) console.log("schema is now: %o", schema);
-        })
-        .then(addTimeTag)
-        .then(function() {
-          if (debug) console.log("schema finally: %o", schema);
-
-          // Once we have the tags/fields enable the Load button
-          tableauSubmit();
-        });
-    });
   }
 
   function setAuth() {
@@ -217,100 +234,105 @@ function influx_escape_char_for_URI(str) {
   }
 
   function getDBs() {
+    try {
+      $('.dropdown-menu li a').click(function() {
+        var _which = $(this).closest("ul").attr('id'); // get the ID of the UL element
+        if (debug) console.log(_which + " changed to: " + $(this).text());
+        $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
+        $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
 
-    $('.dropdown-menu li a').click(function() {
-      var _which = $(this).closest("ul").attr('id'); // get the ID of the UL element
-      if (debug) console.log(_which + " changed to: " + $(this).text());
-      $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
-      $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
+        if (_which === "protocol_selector") {
+          protocol = $(this).text();
+        } else if (_which === "aggregation_selector") {
+          aggregation = $(this).text();
+        } else if (_which === "interval_measure") {
+          interval_measure = $(this).data('prefix');
+          interval_measure_string = $(this).text();
+        }
 
-      if (_which === "protocol_selector") {
-        protocol = $(this).text();
-      } else if (_which === "aggregation_selector") {
-        aggregation = $(this).text();
-      } else if (_which === "interval_measure") {
-        interval_measure = $(this).data('prefix');
-        interval_measure_string = $(this).text();
-      }
+      });
 
-    });
+      $('#interval_time').change(function() {
+        if ($(this).val() === "") {
+          interval_time = $(this).prop('placeholder');
+        } else {
+          interval_time = $(this).val();
+        }
+      });
 
-    $('#interval_time').change(function() {
-      if ($(this).val() === "") {
-        interval_time = $(this).prop('placeholder');
-      } else {
-        interval_time = $(this).val();
-      }
-    });
+      // retrieve the list of databases from the server
+      $('#tableButton').click(function() {
 
-    // retrieve the list of databases from the server
-    $('#tableButton').click(function() {
-
-      // Reset the dropdown in case the user selects another server
-      $('.selectpicker').html('');
-      $('.selectpicker').selectpicker('refresh');
+        // Reset the dropdown in case the user selects another server
+        $('.selectpicker').html('');
+        $('.selectpicker').selectpicker('refresh');
 
 
-      if ($('#servername').val() !== "") {
-        server = $('#servername').val();
-      } else {
-        server = "localhost";
-      }
+        if ($('#servername').val() !== "") {
+          server = $('#servername').val();
+        } else {
+          server = "localhost";
+        }
 
-      if ($('#serverport').val() !== "") {
-        port = $('#serverport').val();
-      } else {
-        port = 8086;
-      }
+        if ($('#serverport').val() !== "") {
+          port = $('#serverport').val();
+        } else {
+          port = 8086;
+        }
 
-      var queryString_DBs = protocol + server + ":" + port + "/query?q=SHOW+DATABASES";
-      if (useAuth) {
-        setAuth();
-        queryString_DBs += queryString_Auth;
-      }
+        var queryString_DBs = protocol + server + ":" + port + "/query?q=SHOW+DATABASES";
+        if (useAuth) {
+          setAuth();
+          queryString_DBs += queryString_Auth;
+        }
 
-      if (debug) console.log("Retrieving databases with querystring: ", queryString_DBs);
-      $.ajax({
-          url: queryString_DBs,
-          dataType: "json",
-          timeout: 3000,
-          success: function(resp) {
-            if (debug) console.log(resp.results[0].series[0].values);
+        if (debug) console.log("Retrieving databases with querystring: ", queryString_DBs);
+        $.ajax({
+            url: queryString_DBs,
+            dataType: "json",
+            timeout: 3000,
+            success: function(resp) {
+              if (debug) console.log(resp.results[0].series[0].values);
 
-            $('.selectpicker').html('');
-            $.each(resp.results[0].series[0].values, function(index, value) {
-              $('<option>' + value + '</option>').appendTo('.selectpicker');
-            });
-            $('.selectpicker').selectpicker('refresh');
+              $('.selectpicker').html('');
+              $.each(resp.results[0].series[0].values, function(index, value) {
+                $('<option>' + value + '</option>').appendTo('.selectpicker');
+              });
+              $('.selectpicker').selectpicker('refresh');
 
-            // Once we have the databases, enable the 'load schema' button
-            $('#getSchemaButton').prop('disabled', false);
-          }
-        })
-        .done(function() {
-          // alert("done")
-        })
-        .fail(function(err) {
-          influx_alert("Error loading database", JSON.stringify(err));
-        });
-    });
+              // Once we have the databases, enable the 'load schema' button
+              $('#getSchemaButton').prop('disabled', false);
+            }
+          })
+          .done(function() {
+            // alert("done")
+          })
+          .fail(function(err) {
+            influx_alert("Error loading database", JSON.stringify(err));
+          });
+      });
 
-    $('#db_dropdown').on('changed.bs.select', function(e) {
-      if (debug) console.log(e.target.value + " has been selected");
+      $('#db_dropdown').on('changed.bs.select', function(e) {
+        if (debug) console.log(e.target.value + " has been selected");
 
-      // reset the schema if the database selection changes
-      resetSchema();
-    });
+        // reset the schema if the database selection changes
+        resetSchema();
+      });
 
-    $('#getSchemaButton').click(function() {
-      db = $('#db_dropdown option:selected').text();
-      var queryString = protocol + server + ":" + port + "/query?q=SHOW+MEASUREMENTS&db=" + db;
-      if (useAuth) {
-        setAuth();
-        queryString += queryString_Auth;
-      }
-      getMeasurements(db, queryString);
-    });
+      $('#getSchemaButton').click(function() {
+        db = $('#db_dropdown option:selected').text();
+        var queryString = protocol + server + ":" + port + "/query?q=SHOW+MEASUREMENTS&db=" + db;
+        if (useAuth) {
+          setAuth();
+          queryString += queryString_Auth;
+        }
+        getMeasurements(db, queryString);
+      });
+    } catch (err) {
+      tableau.abortWithError(err);
+      console.log(err);
+      doneCallback();
+    }
   }
 
   function influx_alert(errorType, err) {
@@ -343,7 +365,7 @@ function influx_escape_char_for_URI(str) {
   }
 
   function numberWithCommas(x) {
-      return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
 
   // Init function for connector, called during every phase
@@ -363,153 +385,107 @@ function influx_escape_char_for_URI(str) {
   };
 
   myConnector.getData = function(table, doneCallback) {
-
-    if (debug) {
-      console.log(table);
-      console.log('lastId (for incremental refresh): ', table.incrementValue);
-      console.log("Using Auth: " + useAuth);
-    }
-    var lastId = table.incrementValue || -1;
-
-    var tableData = [];
-    var json = JSON.parse(tableau.connectionData);
-    var queryString = json.protocol + json.server + ":" + json.port + "/query";
-    var dataString = "q=select+";
-
-    if (json.useAggregation) {
-      dataString += json.aggregation + "(*)";
-    } else {
-      dataString += '*';
-    }
-    dataString += '+from+%22' + influx_escape_char_for_URI(table.tableInfo.alias) + '%22';
-    if (json.useAggregation) {
-      if (lastId !== -1) {
-        // incremental refresh with aggregation
-        dataString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
-      } else {
-        // full refresh with aggregation
-        dataString += "+where+time+<+now()+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
+    try {
+      if (debug) {
+        console.log(table);
+        console.log('lastId (for incremental refresh): ', table.incrementValue);
+        console.log("Using Auth: " + useAuth);
       }
-    } else {
-      if (lastId !== -1) {
-        // incremental refresh with NO aggregation
-        dataString += "+where+time+%3E+'" + lastId + "'";
+      var lastId = table.incrementValue || -1;
+
+      var tableData = [];
+      var json = JSON.parse(tableau.connectionData);
+      var queryString = json.protocol + json.server + ":" + json.port + "/query";
+      var dataString = "q=select+";
+
+      if (json.useAggregation) {
+        dataString += json.aggregation + "(*)";
       } else {
-        // full refresh with NO aggregation
+        dataString += '*';
       }
-    }
-    //dataString += "+limit+6"  // add this to limit the number of results coming back.  Good for testing.
-    dataString += "&db=" + json.db;
-    dataString += "&chunked=true"; // add this to force chunking
-    //dataString += "&chunk_size=20000"   // add this to force a certain data set size
-    //dataString += "&chunked=false"
+      dataString += '+from+%22' + influx_escape_char_for_URI(table.tableInfo.alias) + '%22';
+      if (json.useAggregation) {
+        if (lastId !== -1) {
+          // incremental refresh with aggregation
+          dataString += "+where+time+%3E+'" + lastId + "'+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
+        } else {
+          // full refresh with aggregation
+          dataString += "+where+time+<+now()+group+by+*,time(" + json.interval_time + json.interval_measure + ")";
+        }
+      } else {
+        if (lastId !== -1) {
+          // incremental refresh with NO aggregation
+          dataString += "+where+time+%3E+'" + lastId + "'";
+        } else {
+          // full refresh with NO aggregation
+        }
+      }
+      //dataString += "+limit+6"  // add this to limit the number of results coming back.  Good for testing.
+      dataString += "&db=" + json.db;
+      dataString += "&chunked=true"; // add this to force chunking
+      //dataString += "&chunk_size=20000"   // add this to force a certain data set size
+      //dataString += "&chunked=false"
 
-    if (json.useAuth) {
-      dataString += "&u=" + tableau.username + "&p=" + tableau.password;
-    }
-    if (debug) console.log("Fetch data query string: ", queryString + "?" + dataString);
-    var jqxhr = $.ajax({
-        dataType: "text",
-        url: queryString,
-        data: dataString,
-        success: function(resp) {
+      if (json.useAuth) {
+        dataString += "&u=" + tableau.username + "&p=" + tableau.password;
+      }
+      if (debug) console.log("Fetch data query string: ", queryString + "?" + dataString);
 
-          // NOTE: This response needs to be of dataType:"text" as of v1.2.4.
-          // See https://github.com/influxdata/influxdb/issues/8508
+      var jqxhr = $.ajax({
+          dataType: "text",
+          url: queryString,
+          data: dataString,
+          success: function(resp) {
 
-          var resultsArray = [];
-          // if the response includes \n that means it has multiple result sets and we need to parse through them
-          if (resp.includes('\n')) {
-            resultsArray = resp.split('\n');
-            // there is an extra \n at the end of the string, so remove the last element of the array
-            resultsArray.splice(resultsArray.length - 1, 1);
-            if (debug) console.log('Multiple result arrays (%s) found for %s', resultsArray.length, table.tableInfo.id);
+            // NOTE: This response needs to be of dataType:"text" as of v1.2.4.
+            // See https://github.com/influxdata/influxdb/issues/8508
 
-            // for each result set, parse it into a JSON object
-            for (var jp = 0; jp < resultsArray.length; jp++) {
-              resultsArray[jp] = JSON.parse(resultsArray[jp]);
-            }
-            resp = resultsArray;
-          } else {
-            if (debug) console.log('Single result array returned for table %s', tableau.tableInfo.id);
-            // put it into an array so we only need one set of code to traverse the objects.
-            resultsArray = [JSON.parse(resp)];
-            resp = resultsArray;
-          }
+            var resultsArray = [];
+            // if the response includes \n that means it has multiple result sets and we need to parse through them
+            if (resp.includes('\n')) {
+              resultsArray = resp.split('\n');
+              // there is an extra \n at the end of the string, so remove the last element of the array
+              resultsArray.splice(resultsArray.length - 1, 1);
+              if (debug) console.log('Multiple result arrays (%s) found for %s', resultsArray.length, table.tableInfo.id);
 
-          var values, columns, tags, val, val_len, col, col_len, response_array, series, series_cnt, row, total_rows;
-
-          // Need this line for incremental refresh.  If there are no additional results than this set will be undefined.
-          if ((resp[0].results[0]).hasOwnProperty('series') === true) {
-
-            if (!json.useAggregation) {
-              values = resp[0].results[0].series[0].values;
-              columns = resp[0].results[0].series[0].columns;
-
-              if (debug) {
-                console.log("columns:", columns);
-                console.log("first row of values: ", values[0]);
-                console.log("Total # of rows for " + table.tableInfo.alias + " is: " + values.length);
-                console.log("Using Aggregation: " + json.useAggregation);
+              // for each result set, parse it into a JSON object
+              for (var jp = 0; jp < resultsArray.length; jp++) {
+                resultsArray[jp] = JSON.parse(resultsArray[jp]);
               }
-
-              total_rows = 0;
-              for (response_array = 0; response_array < resp.length; response_array++) {
-                values = resp[response_array].results[0].series[0].values;
-                columns = resp[response_array].results[0].series[0].columns;
-                //Iterate over the result set
-
-                for (val = 0, val_len = values.length; val < val_len; val++) {
-                  row = {};
-                  for (col = 0, col_len = columns.length; col < col_len; col++) {
-                    row[replaceSpecialChars_forTableau_ID(columns[col])] = values[val][col];
-                  }
-                  tableData.push(row);
-
-                  if (total_rows % 20000 === 0 && total_rows !== 0) {
-                    console.log("Getting data: " + total_rows + " rows");
-                    tableau.reportProgress("Getting data: " + numberWithCommas(total_rows) + " rows");
-                  } else if (total_rows === 0) {
-                    console.log("Getting data: 0 rows - Starting Extract");
-                    tableau.reportProgress("Getting data: 0 rows - Starting Extract");
-                  }
-                  total_rows++;
-                }
-              }
+              resp = resultsArray;
             } else {
+              if (debug) console.log('Single result array returned for table %s', table.tableInfo.id);
+              // put it into an array so we only need one set of code to traverse the objects.
+              resultsArray = [JSON.parse(resp)];
+              resp = resultsArray;
+            }
 
-              series = resp[0].results[0].series;
+            var values, columns, tags, val, val_len, col, col_len, response_array, series, series_cnt, row, total_rows;
 
-              if (debug) {
-                console.log("first row of tags:", series[0].tags);
-                console.log("first row of columns:", series[0].columns);
-                console.log("first row of values: ", series[0].values);
-                console.log("Total # of result sets (%s) series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", resp.length, series.length, series[0].columns.length, series[0].values.length, resp.length * series.length * series[0].columns.length * series[0].values.length, table.tableInfo.alias);
-              }
+            // Need this line for incremental refresh.  If there are no additional results than this set will be undefined.
+            if ((resp[0].results[0]).hasOwnProperty('series') === true) {
 
-              total_rows = 0;
-              for (response_array = 0; response_array < resp.length; response_array++) {
-                series = resp[response_array].results[0].series;
-                values = resp[response_array].results[0].series[0].values;
-                columns = resp[response_array].results[0].series[0].columns;
+              if (!json.useAggregation) {
+                values = resp[0].results[0].series[0].values;
+                columns = resp[0].results[0].series[0].columns;
 
-                //Iterate over the result set
-                for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
+                if (debug) {
+                  console.log("columns:", columns);
+                  console.log("first row of values: ", values[0]);
+                  console.log("Total # of rows for " + table.tableInfo.alias + " is: " + values.length);
+                  console.log("Using Aggregation: " + json.useAggregation);
+                }
 
-                  values = series[series_cnt].values;
+                total_rows = 0;
+                for (response_array = 0; response_array < resp.length; response_array++) {
+                  values = resp[response_array].results[0].series[0].values;
+                  columns = resp[response_array].results[0].series[0].columns;
+                  //Iterate over the result set
+
                   for (val = 0, val_len = values.length; val < val_len; val++) {
-                    columns = series[series_cnt].columns;
                     row = {};
-
-                    // add tags from each series
-                    var obj = series[series_cnt].tags;
-                    for (var key in obj) {
-                      if (obj.hasOwnProperty(key)) {
-                        row[replaceSpecialChars_forTableau_ID(key)] = obj[key];
-                      }
-                    }
                     for (col = 0, col_len = columns.length; col < col_len; col++) {
-                      row[replaceSpecialChars_forTableau_ID(series[series_cnt].columns[col])] = series[series_cnt].values[val][col];
+                      row[replaceSpecialChars_forTableau_ID(columns[col])] = values[val][col];
                     }
                     tableData.push(row);
 
@@ -523,27 +499,80 @@ function influx_escape_char_for_URI(str) {
                     total_rows++;
                   }
                 }
+              } else {
 
+                series = resp[0].results[0].series;
+
+                if (debug) {
+                  console.log("first row of tags:", series[0].tags);
+                  console.log("first row of columns:", series[0].columns);
+                  console.log("first row of values: ", series[0].values);
+                  console.log("Total # of result sets (%s) series (%s) & columns (%s) & values (1st row: %s) = total rows (est: %s) for %s is: ", resp.length, series.length, series[0].columns.length, series[0].values.length, resp.length * series.length * series[0].columns.length * series[0].values.length, table.tableInfo.alias);
+                }
+
+                total_rows = 0;
+                for (response_array = 0; response_array < resp.length; response_array++) {
+                  series = resp[response_array].results[0].series;
+                  values = resp[response_array].results[0].series[0].values;
+                  columns = resp[response_array].results[0].series[0].columns;
+
+                  //Iterate over the result set
+                  for (series_cnt = 0, series_len = series.length; series_cnt < series_len; series_cnt++) {
+
+                    values = series[series_cnt].values;
+                    for (val = 0, val_len = values.length; val < val_len; val++) {
+                      columns = series[series_cnt].columns;
+                      row = {};
+
+                      // add tags from each series
+                      var obj = series[series_cnt].tags;
+                      for (var key in obj) {
+                        if (obj.hasOwnProperty(key)) {
+                          row[replaceSpecialChars_forTableau_ID(key)] = obj[key];
+                        }
+                      }
+                      for (col = 0, col_len = columns.length; col < col_len; col++) {
+                        row[replaceSpecialChars_forTableau_ID(series[series_cnt].columns[col])] = series[series_cnt].values[val][col];
+                      }
+                      tableData.push(row);
+
+                      if (total_rows % 20000 === 0 && total_rows !== 0) {
+                        console.log("Getting data: " + total_rows + " rows");
+                        tableau.reportProgress("Getting data: " + numberWithCommas(total_rows) + " rows");
+                      } else if (total_rows === 0) {
+                        console.log("Getting data: 0 rows - Starting Extract");
+                        tableau.reportProgress("Getting data: 0 rows - Starting Extract");
+                      }
+                      total_rows++;
+                    }
+                  }
+
+                }
               }
+
+            } else {
+              if (debug) console.log('No additional data in table ' + table.tableInfo.id + ' or in incremental refresh after ', table.incrementValue);
             }
 
-          } else {
-            if (debug) console.log('No additional data in table ' + table.tableInfo.id + ' or in incremental refresh after ', table.incrementValue);
+
           }
+        })
+        .done(function() {
+          console.log("Finished getting table data for " + table.tableInfo.id);
+          table.appendRows(tableData);
+          doneCallback();
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+          tableau.abortWithError(errorThrown);
+          console.log(errorThrown);
+          doneCallback();
+        });
+    } catch (err) {
 
-
-        }
-      })
-      .done(function() {
-        console.log("Finished getting table data for " + table.tableInfo.id);
-        table.appendRows(tableData);
-        doneCallback();
-      })
-      .fail(function(jqXHR, textStatus, errorThrown) {
-        tableau.abortWithError(errorThrown);
-        console.log(errorThrown);
-        doneCallback();
-      });
+      tableau.abortWithError(err);
+      console.log(err);
+      doneCallback();
+    }
   };
 
 
@@ -553,20 +582,31 @@ function influx_escape_char_for_URI(str) {
 
     if (urlVars.auth === 'true' || urlVars.auth === true) {
       useAuth = true;
-    } else {
-      useAuth = false;
-    }
-
-    if (useAuth === true) {
       $('#authGroup').removeClass('hidden');
       // $('#useAuthCheckBox').attr("checked", "checked");
       $('#reloadWithAuth').attr("hidden", "hidden");
-
     } else {
+      useAuth = false;
       $('#authGroup').addClass('hidden');
       // $('#useAuthCheckBox').attr("checked");
       $('#reloadWithoutAuth').attr("hidden", "hidden");
     }
+
+    // if (urlVars.server !== '') {
+    //   server = urlVars.server;
+    //   $('#servername').val(urlVars.server);
+    //   $('#servername').attr('placeholder', urlVars.server);
+    // }
+    //
+    // if (urlVars.port !== '') {
+    //   $('#serverport').val(urlVars.port);
+    //   port = urlVars.port;
+    // }
+    //
+    // if (urlVars.username !== '') {
+    //   username = urlVars.username;
+    //   $('#username').val(urlVars.username);
+    // }
 
     if (useAggregation === true) {
       $('#aggregationGroup').removeClass('hidden');
@@ -576,23 +616,24 @@ function influx_escape_char_for_URI(str) {
       $('#useAggregationCheckBox').attr("checked");
     }
 
-    $('#useAuthCheckBox').click(function() {
-      var _url;
-      if (window.location.href.indexOf('?') === -1) {
-        _url = window.location.href;
-      } else {
-        _url = window.location.href.slice(0, window.location.href.indexOf('?'));
-      }
+    // $('#useAuthCheckBox').click(function() {
+    //   var _url;
+    //   if (window.location.href.indexOf('?') === -1) {
+    //     _url = window.location.href;
+    //   } else {
+    //     _url = window.location.href.slice(0, window.location.href.indexOf('?'));
+    //   }
+    //
+    //   if ($(this).attr("checked") === undefined) {
+    //     _url += "?auth=true&server=" + server + "&port=" + port + "&username=" + username;
+    //   } else {
+    //     _url += "?auth=false&server=" + server + "&port=" + port;
+    //
+    //   }
+    //   window.open(_url, 'wdc', '_self');
+    //
+    // });
 
-      if ($(this).attr("checked") === undefined) {
-        _url += "?auth=true";
-      } else {
-        _url += "?auth=false";
-
-      }
-      window.open(_url, 'wdc', '_self');
-
-    });
 
 
     $('#useAggregationCheckBox').click(function() {
