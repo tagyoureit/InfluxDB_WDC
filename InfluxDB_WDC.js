@@ -229,7 +229,7 @@
   function setAuth() {
     username = $('#username').val();
     password = $('#password').val();
-    queryString_Auth = "&u=" + username + "&p=" + password;
+    queryString_Auth = "&u=" + username + "&p=" + encodeURIComponent(password);
     queryString_Auth_Log = "&u=" + username + "&p=[redacted]";
   }
 
@@ -427,7 +427,7 @@
       //dataString += "&chunked=false"
 
       if (json.useAuth) {
-        dataString += "&u=" + tableau.username + "&p=" + tableau.password;
+        dataString += "&u=" + tableau.username + "&p=" + encodeURIComponent(tableau.password);
       }
       if (debug) console.log("Fetch data query string: ", queryString + "?" + dataString);
 
