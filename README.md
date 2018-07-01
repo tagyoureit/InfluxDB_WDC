@@ -6,6 +6,13 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.jpg)
 
 ## Release Notes
+1. 2.0 -
+* Added Custom SQL - read more below for further details
+* Revamped UI
+* Removed https+influxdb:\\; It was only for embedded code.
+* Upgraded components Bootstrap 4, WDC 2.3, and other components.
+* Fixed issue with empty table crashing connector.
+
 1. 1.4 - Added protocol <code>https+influxdb:\\</code> per Issue #4.
 1. 1.3 - Additional error logging.
 1. 1.2 - Added support for special characters - ` (space)`, `,`, `\ and /`, `' and "`,`-` and other special characters.
@@ -31,9 +38,37 @@ If you use authorization on your InfluxDB, you can click the link to reload the 
 ## Features
 
 * Basic Auth or no Auth
+* Custom SQL
 * Full or Incremental refresh
 * Row count for extract creation progress
 
+## How To Use
+
+4 easy steps.
+1. Enter your server details (protocol, hostname, port and optionally username/password)
+2. Press connect to load the databases and then select the appropriate one
+3. Choose the type of query you want (See details below)
+4. Press Submit to load the schema into Tableau
+
+### Query Types
+#### All Rows
+This is the most basic query.  It is equivalent to writing "select * from [measurement]" in InfluxQL CLI.  You will be presented with a schema in the Tableau Data Source page and can select your tables and Tableau will then load the data.  This will support Incremental refreshes.
+
+#### Aggregation
+This is a shortcut for simple aggregations.  You can choose one of 9 basic aggregations and the interval type (microseconds up to weeks) and the interval time.  Like with all rows, you will be able to select the specific tables you want at Tableau Data Source Screen and this supports Incremental Refreshes.
+
+#### Custom SQL
+This allows you to enter any custom sql that you could write into InfluxQL for any query not supported by the other two types.  In addition, this supports multiple statements and multiple series.
+
+* Multiple statements - You can write multiple InfluxQL statements separated by ';'.  For example,
+```
+select * from tableA; select * from tableB
+```
+Tableau will load the schema for tableaA and tableB and you can choose to then load the data individually or join them together (see note on aggregation below).
+
+* Multiple series - This connector supports grouping the data by series.  In InfluxQL if you write a sql statement like `select * from tableC group by "someTag"` and someTag has multiple values Influx will return multiple series.  See [group by](https://docs.influxdata.com/influxdb/v1.5/query_language/data_exploration/#group-by-tags) in the Influx help pages.  This connector will union all of the data in each series into a single table.  You can then format the data in any number of ways using Tableau.
+
+You can combine multiple series and multiple statements with the custom sql option.  Incremental refreshes are not supported with custom sql at this time (please submit an issue if you feel this is important).
 
 ## Suggestions on use
 ### Tableau and Time Series
@@ -44,10 +79,10 @@ Aggregation is a great way to be able to do a row-level join on time series data
 
 Aggregation can significantly decrease (or increase) the number of data points that are returned.  If your DB stores 1000 measurements per second, and aggregate up to the minute you'll reduce the data by 59,999 points per minute.  On the other hand, if you store 1 measurement per hour and aggregate by the milli-second you'll pull an extra 59,999 data points per minute.
 
-If you don't aggregate the measurements, then you will likely want to create a separate Tableau Data Source for each measurement.  
+If you don't aggregate the measurements, then you will likely want to create a separate Tableau Data Source for each measurement.
 
 #### Do you need MAX in Tableau?
-By default, Tableau will try to SUM all of your measurements.  If you bring data back and try to display it in Tableau at a higher level aggregation (eg you collect temperature readings every 20 minutes) and graph this at an hourly measurement, you may see you steady 80 degrees appear as 240 degrees!  
+By default, Tableau will try to SUM all of your measurements.  If you bring data back and try to display it in Tableau at a higher level aggregation (eg you collect temperature readings every 20 minutes) and graph this at an hourly measurement, you may see you steady 80 degrees appear as 240 degrees!
 
 ## Limitations
 
