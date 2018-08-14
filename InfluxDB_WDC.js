@@ -33,7 +33,7 @@
       .replace(/=/g, '_equal_')
       .replace(/\//g, '_fslash_')
       .replace(/-/g, '_dash_')
-      .replace(/./g, '_dot_')
+      .replace(/\./g, '_dot_')
       .replace(/[^A-Za-z0-9_]/g, '_');
     return newStr;
   }
@@ -287,7 +287,7 @@
               type = enumType(resp.results[0].series[0].values[0][index]);
             }
             cols.push({
-              id: el,
+              id: replaceSpecialChars_forTableau_ID(el),
               alias: el,
               dataType: type,
             });
@@ -298,7 +298,7 @@
             for (var el in resp.results[0].series[0].tags) {
 
               cols.push({
-                id: el,
+                id: replaceSpecialChars_forTableau_ID(el),
                 alias: el,
                 dataType: tableau.dataTypeEnum.string,
                 sql: queryString,
@@ -684,8 +684,8 @@
       if (json.queryType === 'custom') {
         console.log('table:', table);
         console.log('custom sql split stored: %o', json.customSqlSplit);
-        console.log('custom[table]:', json.customSqlSplit[table.tableInfo.id]);
-        dataString += encodeURIComponent(json.customSqlSplit[table.tableInfo.id]);
+        console.log('custom[table]:', json.customSqlSplit[table.tableInfo.alias]);
+        dataString += encodeURIComponent(json.customSqlSplit[table.tableInfo.alias]);
         dataString += '&db=' + json.db;
         dataString += '&chunked=true'; // add this to force chunking
 
@@ -735,7 +735,7 @@
         dataType: 'text',
         url: queryString,
         data: dataString,
-        async: false,
+        async: false
       })
         .done(function (resp) {
 
