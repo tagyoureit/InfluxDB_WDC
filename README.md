@@ -6,13 +6,14 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.png)
 
 ## Release Notes
+1. 2.0.1
+    * Added fix for . (dot) in special characters
 1. 2.0 -
-* Added Custom SQL - read more below for further details
-* Revamped UI
-* Removed https+influxdb:\\; It was only for embedded code.
-* Upgraded components Bootstrap 4, WDC 2.3, and other components.
-* Fixed issue with empty table crashing connector.
-
+    * Added Custom SQL - read more below for further details
+    * Revamped UI
+    * Removed https+influxdb:\\; It was only for embedded code.
+    * Upgraded components Bootstrap 4, WDC 2.3, and other components.
+    * Fixed issue with empty table crashing connector.
 1. 1.4 - Added protocol <code>https+influxdb:\\</code> per Issue #4.
 1. 1.3 - Additional error logging.
 1. 1.2 - Added support for special characters - ` (space)`, `,`, `\ and /`, `' and "`,`-` and other special characters.
