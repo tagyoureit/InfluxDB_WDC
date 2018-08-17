@@ -6,6 +6,8 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.png)
 
 ## Release Notes
+1. 2.0.2
+    * Added fix for focus on QueryType button when using keyboard
 1. 2.0.1
     * Added fix for . (dot) in special characters
 1. 2.0 -

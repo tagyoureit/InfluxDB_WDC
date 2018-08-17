@@ -276,7 +276,7 @@
           if (debug) console.log('retrieved custom sql response: %o', resp);
           if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
 
-          cols = [];
+          let cols = [];
 
           // columns/fields
           resp.results[0].series[0].columns.forEach(function (el, index) {
@@ -590,9 +590,7 @@
         .click(function () {
           db = $('#db_dropdown option:selected')
             .text();
-          if ($('#querytype')
-            .find(':checked')
-            .data('val') === 'custom') {
+          if (queryType === 'custom'){
             parseCustomSql(db, $('#customSql')
               .val());
           }
@@ -735,7 +733,7 @@
         dataType: 'text',
         url: queryString,
         data: dataString,
-        async: false
+        async: false,
       })
         .done(function (resp) {
 
@@ -923,6 +921,9 @@
 
       $('#querytype')
         .on('change', function () {
+          console.log('change');
+          $(this)
+            .prop('checked', true);
           if ($(this)
             .find(':checked')
             .data('val') === 'aggregation') {
@@ -954,7 +955,6 @@
           }
           resetSchema();
         });
-
 
       getDBs();
       tableau.registerConnector(myConnector);

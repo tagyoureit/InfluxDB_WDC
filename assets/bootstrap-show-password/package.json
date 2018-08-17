@@ -1,0 +1,55 @@
+{
+  "_from": "bootstrap-show-password@^1.0.3",
+  "_id": "bootstrap-show-password@1.1.2",
+  "_inBundle": false,
+  "_integrity": "sha1-iPfDOy/pj2G4kiDINEa0PZYkSFM=",
+  "_location": "/bootstrap-show-password",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "range",
+    "registry": true,
+    "raw": "bootstrap-show-password@^1.0.3",
+    "name": "bootstrap-show-password",
+    "escapedName": "bootstrap-show-password",
+    "rawSpec": "^1.0.3",
+    "saveSpec": null,
+    "fetchSpec": "^1.0.3"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/bootstrap-show-password/-/bootstrap-show-password-1.1.2.tgz",
+  "_shasum": "88f7c33b2fe98f61b89220c83446b43d96244853",
+  "_spec": "bootstrap-show-password@^1.0.3",
+  "_where": "/Users/rgoldin/Documents/programming/webdataconnector/InfluxDB_WDC",
+  "author": {
+    "name": "zhixin wen",
+    "email": "wenzhixin2010@gmail.com"
+  },
+  "bugs": {
+    "url": "https://github.com/wenzhixin/bootstrap-show-password/issues"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Show/hide password plugin for twitter bootstrap.",
+  "devDependencies": {
+    "del": "^0.1.2",
+    "gulp": "^3.8.7",
+    "gulp-header": "^1.1.1",
+    "gulp-rename": "^1.2.0",
+    "gulp-uglify": "^0.3.1"
+  },
+  "homepage": "https://github.com/wenzhixin/bootstrap-show-password",
+  "keywords": [
+    "bootstrap",
+    "password"
+  ],
+  "license": "MIT",
+  "main": "bootstrap-show-password.js",
+  "name": "bootstrap-show-password",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wenzhixin/bootstrap-show-password.git"
+  },
+  "version": "1.1.2"
+}
