@@ -276,7 +276,7 @@
           if (debug) console.log('retrieved custom sql response: %o', resp);
           if (debug) console.log('resp.results[0].series[0].values: %o', resp.results[0].series[0].values);
 
-          let cols = [];
+          var cols = [];
 
           // columns/fields
           resp.results[0].series[0].columns.forEach(function (el, index) {
