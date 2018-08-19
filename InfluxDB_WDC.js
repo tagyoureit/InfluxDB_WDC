@@ -919,39 +919,71 @@
       $('#customSqlGroup')
         .collapse('hide');
 
+
+      // function will check to make sure correct group is showing at end of show transition
+      // eg, if the user hits tab quickly twice than two groups would be shown
+      $('#aggregationGroup, #customSqlGroup').on('shown.bs.collapse', function(){
+        if (queryType === 'custom' && $('#aggregationGroup').hasClass('show')){
+          $('#aggregationGroup')
+            .collapse('hide');
+        }
+        else if (queryType === 'aggregation' && $('#customSqlGroup').hasClass('show')){
+          $('#customSqlGroup')
+            .collapse('hide');
+        }
+        else if (queryType === 'all'){
+          $('#aggregationGroup')
+            .collapse('hide');
+          $('#customSqlGroup')
+            .collapse('hide');
+        }
+      })
+
+
+      // function will check to make sure correct group is showing at end of hide transition
+      // eg, if the user hits left/right arrow quickly (from custom or aggregation) than the target group would not be shown
+      $('#aggregationGroup, #customSqlGroup').on('hidden.bs.collapse', function(){
+        if (queryType === 'aggregation' && !$('#aggregationGroup').hasClass('show')){
+          $('#aggregationGroup')
+            .collapse('show');
+        }
+        else if (queryType === 'custom' && !$('#customSqlGroup').hasClass('show')) {
+          $('#customSqlGroup')
+            .collapse('show');
+        }
+      })
+
+
       $('#querytype')
         .on('change', function () {
-          console.log('change');
-          $(this)
-            .prop('checked', true);
+         // $(this)
+          //  .prop('checked', true);
           if ($(this)
             .find(':checked')
             .data('val') === 'aggregation') {
+            queryType = 'aggregation';
             $('#aggregationGroup')
               .collapse('show');
             $('#customSqlGroup')
               .collapse('hide');
-            queryType = 'aggregation';
           }
           if ($(this)
             .find(':checked')
             .data('val') === 'all') {
+            queryType = 'all';
             $('#aggregationGroup')
               .collapse('hide');
             $('#customSqlGroup')
               .collapse('hide');
-            queryType = 'all';
-
           }
           else if ($(this)
             .find(':checked')
             .data('val') === 'custom') {
+            queryType = 'custom';
             $('#aggregationGroup')
               .collapse('hide');
             $('#customSqlGroup')
               .collapse('show');
-            queryType = 'custom';
-
           }
           resetSchema();
         });
