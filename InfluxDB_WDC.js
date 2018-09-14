@@ -466,40 +466,28 @@
 
   function getDBs() {
     try {
-      $('.dropdown-menu li a')
+      $('.proto_sel')
         .click(function () {
-          var _which = $(this)
-            .closest('ul')
-            .attr('id'); // get the ID of the UL element
-          if (debug) {
-            console.log(_which + ' changed to: ' + $(this)
+            if (debug) {
+            console.log('Protocol changed to: ' + $(this)
               .text());
           }
-          $(this)
-            .parents('.dropdown')
-            .find('.btn')
-            .html($(this)
-              .text() + ' <span class="caret"></span>');
-          $(this)
-            .parents('.dropdown')
-            .find('.btn')
-            .val($(this)
-              .data('value'));
+            $('.proto_sel').parent().parent().find('.btn').html($(this)
+                .text() + ' <span class="caret"></span>')
+          // $(this)
+          //   .html($(this)
+          //     .text() + ' <span class="caret"></span>');
+          // $(this)
+          //   .val($(this)
+          //     .data('value'));
 
-          if (_which === 'protocol_selector') {
             protocol = $(this)
               .text();
-          } else if (_which === 'aggregation_selector') {
-            aggregation = $(this)
-              .text();
-          } else if (_which === 'interval_measure') {
-            interval_measure = $(this)
-              .data('prefix');
-            interval_measure_string = $(this)
-              .text();
-          }
+          })
 
-        });
+
+
+
 
       $('#interval_time')
         .change(function () {
