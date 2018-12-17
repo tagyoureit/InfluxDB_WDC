@@ -13,7 +13,7 @@
   var queryString_Auth; // string to hold the &u=_user_&p=_pass_ part of the query string
   var queryString_Auth_Log; // use for logging the redacted password
 
-  var queryType = 'simple'; // use aggregation in the queries?
+  var queryType = 'all'; // var to store query type
   var interval_time = '30'; // value for the group by time
   var interval_measure = 'm'; // h=hour, m=min, etc
   var interval_measure_string = 'minutes'; // full string for interval
