@@ -1,6 +1,6 @@
 {
   "name": "influxdb_wdc",
-  "version": "1.0.0",
+  "version": "2.0.4",
   "description": "A Tableau Web Data Connector (WDC) for InfluxDB",
   "main": "Influx.html",
   "scripts": {
@@ -25,7 +25,5 @@
     "url": "https://github.com/tagyoureit/InfluxDB_WDC/issues"
   },
   "homepage": "https://github.com/tagyoureit/InfluxDB_WDC#readme",
-  "dependencies": {
-    "bootstrap-show-password": "^1.0.3"
-  }
+  "dependencies": {}
 }

@@ -6,6 +6,13 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.png)
 
 ## Release Notes
+1. 2.0.4
+    * Fixed loading large data sets
+    * Fixed existing settings are reloaded when editing data source
+    * Fixed processing measurements with identical tag/field names (use custom sql)
+    * Fixed custom sql parsing
+    * Updated dependencies
+    * Updated console debug statements
 1. 2.0.3
     * Fixed inability to select HTTPS.  Issue #10.
 1. 2.0.2
