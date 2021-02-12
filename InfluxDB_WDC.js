@@ -612,7 +612,7 @@
               console.log('INFLUX ERROR!');
               console.log(JSON.stringify(err))
               console.log(err);
-              influx_alert('Error loading database', JSON.stringify(err));
+              influx_alert('Error loading database', JSON.stringify(err) + '\n If you are using 2019.4 or later you may be experiencing a CORS limitation.  You need to enable HTTPS on Influx (https://docs.influxdata.com/influxdb/v1.8/administration/https_setup/) or install this extension locally and run it from an http server.');
             });
         });
 
