@@ -6,6 +6,8 @@ Github Repository: [https://github.com/tagyoureit/InfluxDB_WDC](https://github.c
 ![Tableau WDC](images/InfluxDB_WDC.png)
 
 ## Release Notes
+1. 2.0.5
+    * Fixed es6 incompatibility introduced with 2.0.4
 1. 2.0.4
     * Fixed loading large data sets
     * Fixed existing settings are reloaded when editing data source

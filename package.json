@@ -1,6 +1,6 @@
 {
   "name": "influxdb_wdc",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "A Tableau Web Data Connector (WDC) for InfluxDB",
   "main": "Influx.html",
   "scripts": {
